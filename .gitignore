@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+pnpm-lock.yaml
+
+# Build outputs
+dist/
+lib/
+build/
+*.exe
+cli/askkaya
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+*.o
+*.a
+*.so
+go.work
+go.work.sum
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+
+# Next.js
+.next/
+out/
+
+# Testing
+coverage/
+*.log
+
+# Misc
+.cache/
+tmp/
+temp/
