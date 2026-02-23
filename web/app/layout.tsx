@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import Link from 'next/link'
 import './globals.css'
+import { cn } from '@/lib/utils'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -10,6 +11,14 @@ export const metadata: Metadata = {
   description: 'Admin dashboard for AskKaya client support platform',
 }
 
+const navItems = [
+  { href: '/dashboard', label: 'Dashboard', icon: '📊' },
+  { href: '/clients', label: 'Clients', icon: '👥' },
+  { href: '/kb', label: 'Knowledge Base', icon: '📚' },
+  { href: '/escalations', label: 'Escalations', icon: '🚨' },
+  { href: '/analytics', label: 'Analytics', icon: '📈' },
+]
+
 export default function RootLayout({
   children,
 }: {
@@ -17,54 +26,53 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
-        <div className="min-h-screen bg-gray-50">
-          <nav className="bg-white shadow-sm border-b">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex justify-between h-16">
-                <div className="flex">
-                  <div className="flex-shrink-0 flex items-center">
-                    <h1 className="text-xl font-bold text-gray-900">AskKaya</h1>
-                  </div>
-                  <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                    <Link
-                      href="/dashboard"
-                      className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                    >
-                      Dashboard
-                    </Link>
-                    <Link
-                      href="/clients"
-                      className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                    >
-                      Clients
-                    </Link>
-                    <Link
-                      href="/kb"
-                      className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                    >
-                      Knowledge Base
-                    </Link>
-                    <Link
-                      href="/escalations"
-                      className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                    >
-                      Escalations
-                    </Link>
-                    <Link
-                      href="/analytics"
-                      className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                    >
-                      Analytics
-                    </Link>
-                  </div>
-                </div>
-              </div>
+      <body className={cn(inter.className, 'bg-background text-foreground')}>
+        <div className="min-h-screen flex">
+          {/* Sidebar */}
+          <aside className="w-64 border-r bg-card hidden md:block">
+            <div className="p-6">
+              <h1 className="text-xl font-bold">AskKaya</h1>
+              <p className="text-sm text-muted-foreground">Admin Dashboard</p>
             </div>
-          </nav>
-          <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-            {children}
-          </main>
+            <nav className="px-3">
+              {navItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                >
+                  <span>{item.icon}</span>
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          </aside>
+
+          {/* Mobile header */}
+          <div className="flex-1 flex flex-col">
+            <header className="md:hidden border-b bg-card p-4">
+              <div className="flex items-center justify-between">
+                <h1 className="text-lg font-bold">AskKaya</h1>
+                <nav className="flex gap-2">
+                  {navItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="text-lg"
+                      title={item.label}
+                    >
+                      {item.icon}
+                    </Link>
+                  ))}
+                </nav>
+              </div>
+            </header>
+
+            {/* Main content */}
+            <main className="flex-1 p-6">
+              {children}
+            </main>
+          </div>
         </div>
       </body>
     </html>

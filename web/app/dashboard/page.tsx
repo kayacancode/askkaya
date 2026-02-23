@@ -1,144 +1,219 @@
 import { getAdminDb } from '@/lib/firebase-admin'
 import { DashboardStats } from '@/lib/types'
 import { Timestamp } from 'firebase-admin/firestore'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
-// Disable static generation - requires runtime data
 export const dynamic = 'force-dynamic'
 
 async function getDashboardStats(): Promise<DashboardStats> {
   const db = getAdminDb()
-  
-  // Get recent queries (last 24 hours)
+
   const oneDayAgo = Timestamp.fromDate(new Date(Date.now() - 24 * 60 * 60 * 1000))
   const queriesSnapshot = await db
     .collection('queries')
     .where('timestamp', '>=', oneDayAgo)
     .get()
-  
-  // Get active escalations
+
   const escalationsSnapshot = await db
     .collection('escalations')
     .where('status', '==', 'pending')
     .get()
-  
-  // Get all clients
+
   const clientsSnapshot = await db.collection('clients').get()
-  
-  // Calculate billing summary
+  const kbSnapshot = await db.collection('kb_articles').get()
+
   let activeClients = 0
   let suspendedClients = 0
-  
+
   clientsSnapshot.docs.forEach((doc) => {
     const data = doc.data()
-    if (data.status === 'active') {
+    if (data.status === 'active' || data.billing_status === 'active') {
       activeClients++
     } else if (data.status === 'suspended') {
       suspendedClients++
     }
   })
-  
+
   return {
     recentQueries: queriesSnapshot.size,
     activeEscalations: escalationsSnapshot.size,
     totalClients: clientsSnapshot.size,
     activeClients,
     suspendedClients,
+    kbArticles: kbSnapshot.size,
   }
 }
 
 export default async function DashboardPage() {
   const stats = await getDashboardStats()
-  
+
   return (
-    <div className="px-4 py-6 sm:px-0">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
-      
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Recent Queries Card */}
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                </svg>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Recent Queries (24h)
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {stats.recentQueries}
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <p className="text-muted-foreground">Overview of your AskKaya platform</p>
+      </div>
 
-        {/* Active Escalations Card */}
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Active Escalations
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {stats.activeEscalations}
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Main Stats */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Queries (24h)</CardTitle>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              className="h-4 w-4 text-muted-foreground"
+            >
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+            </svg>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.recentQueries}</div>
+            <p className="text-xs text-muted-foreground">
+              queries processed
+            </p>
+          </CardContent>
+        </Card>
 
-        {/* Total Clients Card */}
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <svg className="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Total Clients
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {stats.totalClients}
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Escalations</CardTitle>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              className="h-4 w-4 text-muted-foreground"
+            >
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+            </svg>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.activeEscalations}</div>
+            <p className="text-xs text-muted-foreground">
+              pending review
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">KB Articles</CardTitle>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              className="h-4 w-4 text-muted-foreground"
+            >
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.kbArticles || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              in knowledge base
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              className="h-4 w-4 text-muted-foreground"
+            >
+              <rect width="20" height="14" x="2" y="5" rx="2" />
+              <path d="M2 10h20" />
+            </svg>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalClients}</div>
+            <p className="text-xs text-muted-foreground">
+              registered clients
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Billing Summary */}
-      <div className="mt-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Billing Summary</h2>
-        <div className="bg-white shadow rounded-lg p-6">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Active Clients</p>
-              <p className="mt-1 text-2xl font-semibold text-green-600">{stats.activeClients}</p>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Billing Status</CardTitle>
+            <CardDescription>Client subscription breakdown</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-green-500" />
+                  <span className="text-sm font-medium">Active</span>
+                </div>
+                <span className="text-2xl font-bold text-green-600">{stats.activeClients}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-red-500" />
+                  <span className="text-sm font-medium">Suspended</span>
+                </div>
+                <span className="text-2xl font-bold text-red-600">{stats.suspendedClients}</span>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-medium text-gray-500">Suspended Clients</p>
-              <p className="mt-1 text-2xl font-semibold text-red-600">{stats.suspendedClients}</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+            <CardDescription>Common tasks</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-2">
+              <a
+                href="/escalations?status=pending"
+                className="flex items-center gap-2 rounded-lg border p-3 hover:bg-muted transition-colors"
+              >
+                <span>🚨</span>
+                <span className="text-sm">Review pending escalations</span>
+              </a>
+              <a
+                href="/kb"
+                className="flex items-center gap-2 rounded-lg border p-3 hover:bg-muted transition-colors"
+              >
+                <span>📚</span>
+                <span className="text-sm">Browse knowledge base</span>
+              </a>
+              <a
+                href="/clients/create"
+                className="flex items-center gap-2 rounded-lg border p-3 hover:bg-muted transition-colors"
+              >
+                <span>👥</span>
+                <span className="text-sm">Add new client</span>
+              </a>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

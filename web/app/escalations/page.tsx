@@ -5,10 +5,24 @@ import { collection, getDocs, query, where, orderBy } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 import { Escalation } from '@/lib/types'
 import Link from 'next/link'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+
+type StatusFilter = 'pending' | 'answered' | 'dismissed' | 'all'
 
 export default function EscalationsListPage() {
   const [escalations, setEscalations] = useState<Escalation[]>([])
-  const [statusFilter, setStatusFilter] = useState<'pending' | 'answered' | 'closed' | 'all'>('pending')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('pending')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -16,6 +30,7 @@ export default function EscalationsListPage() {
   }, [statusFilter])
 
   async function loadEscalations() {
+    setLoading(true)
     try {
       let escalationsQuery
 
@@ -37,92 +52,130 @@ export default function EscalationsListPage() {
         id: doc.id,
         ...doc.data(),
       } as Escalation))
-      
+
       setEscalations(escalationsData)
-      setLoading(false)
     } catch (error) {
       console.error('Error loading escalations:', error)
+    } finally {
       setLoading(false)
     }
   }
 
-  if (loading) {
-    return (
-      <div className="px-4 py-6 sm:px-0">
-        <div className="text-center">Loading...</div>
-      </div>
-    )
+  function getStatusBadge(status: string) {
+    switch (status) {
+      case 'pending':
+        return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Pending</Badge>
+      case 'answered':
+        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Answered</Badge>
+      case 'dismissed':
+        return <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">Dismissed</Badge>
+      default:
+        return <Badge variant="secondary">{status}</Badge>
+    }
+  }
+
+  function formatDate(timestamp: any): string {
+    if (!timestamp) return '-'
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  function truncate(text: string | undefined, length: number): string {
+    if (!text) return '-'
+    return text.length > length ? text.slice(0, length) + '...' : text
   }
 
   return (
-    <div className="px-4 py-6 sm:px-0">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Escalations</h1>
-      
-      {/* Status Filter */}
-      <div className="mb-6">
-        <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-2">
-          Status Filter
-        </label>
-        <select
-          id="status-filter"
-          className="block w-full sm:w-64 border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as any)}
-          aria-label="Status"
-        >
-          <option value="all">All</option>
-          <option value="pending">Pending</option>
-          <option value="answered">Answered</option>
-          <option value="closed">Closed</option>
-        </select>
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Escalations</h1>
+        <p className="text-muted-foreground">
+          Review and respond to escalated queries
+        </p>
       </div>
 
-      {/* Escalations List */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
-        <ul className="divide-y divide-gray-200">
-          {escalations.map((escalation) => (
-            <li key={escalation.id}>
-              <Link href={`/escalations/${escalation.id}`} className="block hover:bg-gray-50">
-                <div className="px-4 py-4 sm:px-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-indigo-600 truncate">
-                        {escalation.client_name}
-                      </p>
-                      <p className="mt-1 text-sm text-gray-900">
-                        {escalation.query}
-                      </p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        {escalation.created_at instanceof Date
-                          ? escalation.created_at.toLocaleString()
-                          : new Date(escalation.created_at.toDate()).toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="ml-4 flex-shrink-0">
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          escalation.status === 'pending'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : escalation.status === 'answered'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}
-                      >
-                        {escalation.status}
-                      </span>
-                    </div>
-                  </div>
+      {/* Status Tabs */}
+      <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+        <TabsList>
+          <TabsTrigger value="pending" className="gap-2">
+            Pending
+            {!loading && statusFilter !== 'pending' && (
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5">
+                {escalations.filter(e => e.status === 'pending').length || '?'}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="answered">Answered</TabsTrigger>
+          <TabsTrigger value="dismissed">Dismissed</TabsTrigger>
+          <TabsTrigger value="all">All</TabsTrigger>
+        </TabsList>
+      </Tabs>
+
+      {/* Escalations Table */}
+      <Card>
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="p-6 space-y-4">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="flex gap-4">
+                  <Skeleton className="h-12 w-24" />
+                  <Skeleton className="h-12 flex-1" />
+                  <Skeleton className="h-12 w-20" />
                 </div>
-              </Link>
-            </li>
-          ))}
-          {escalations.length === 0 && (
-            <li className="px-4 py-8 text-center text-gray-500">
-              No {statusFilter !== 'all' ? statusFilter : ''} escalations found.
-            </li>
+              ))}
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Client</TableHead>
+                  <TableHead className="w-[50%]">Query</TableHead>
+                  <TableHead className="hidden sm:table-cell">Created</TableHead>
+                  <TableHead className="text-right">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {escalations.map((escalation) => (
+                  <TableRow key={escalation.id} className="cursor-pointer hover:bg-muted/50">
+                    <TableCell>
+                      <Link href={`/escalations/${escalation.id}`} className="font-medium hover:underline">
+                        {escalation.client_name || 'Unknown'}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <Link href={`/escalations/${escalation.id}`} className="block">
+                        <p className="text-sm">{truncate(escalation.query, 100)}</p>
+                        {escalation.auto_learned && (
+                          <Badge variant="outline" className="mt-1 text-xs">Auto-learned</Badge>
+                        )}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell text-muted-foreground">
+                      {formatDate(escalation.created_at)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {getStatusBadge(escalation.status)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {escalations.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                      No {statusFilter !== 'all' ? statusFilter : ''} escalations found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           )}
-        </ul>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
