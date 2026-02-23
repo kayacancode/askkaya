@@ -50,7 +50,7 @@ export default function AnalyticsPage() {
       const escalations = escalationsSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-      }))
+      })) as Array<{ id: string; created_at: Date | { toDate: () => Date } }>
 
       // Aggregate by day
       const dataByDay: Record<string, { queries: number; escalations: number; confidences: number[] }> = {}

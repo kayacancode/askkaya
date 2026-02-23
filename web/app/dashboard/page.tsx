@@ -2,6 +2,9 @@ import { getAdminDb } from '@/lib/firebase-admin'
 import { DashboardStats } from '@/lib/types'
 import { Timestamp } from 'firebase-admin/firestore'
 
+// Disable static generation - requires runtime data
+export const dynamic = 'force-dynamic'
+
 async function getDashboardStats(): Promise<DashboardStats> {
   const db = getAdminDb()
   

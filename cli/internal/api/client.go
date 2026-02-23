@@ -87,7 +87,7 @@ func (c *APIClient) Query(question string) (QueryResponse, error) {
 
 // doQuery performs the actual query request
 func (c *APIClient) doQuery(question string, response *QueryResponse) error {
-	url := fmt.Sprintf("%s/api/query", c.BaseURL)
+	url := fmt.Sprintf("%s/queryApi", c.BaseURL)
 
 	reqBody := map[string]interface{}{
 		"question": question,
@@ -150,7 +150,7 @@ func (c *APIClient) doQuery(question string, response *QueryResponse) error {
 
 // HealthCheck checks API connectivity
 func (c *APIClient) HealthCheck() error {
-	url := fmt.Sprintf("%s/api/health", c.BaseURL)
+	url := fmt.Sprintf("%s/healthApi", c.BaseURL)
 
 	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()

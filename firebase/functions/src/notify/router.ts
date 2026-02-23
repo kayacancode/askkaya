@@ -7,10 +7,24 @@
  * 3. Email (final fallback)
  */
 
+import * as admin from 'firebase-admin';
 import { Escalation, NotificationResult } from './types';
 import { formatEscalationAlert, sendMessage as sendTelegram } from './telegram';
 import { sendMessage as sendIMessage } from './imessage';
 import { sendEmail } from './email';
+import * as logger from '../utils/logger';
+
+// Lazy initialize Firebase
+function getDb(): admin.firestore.Firestore {
+  try {
+    // Try to get the default app
+    admin.app();
+  } catch {
+    // App doesn't exist, initialize it
+    admin.initializeApp();
+  }
+  return admin.firestore();
+}
 
 /**
  * Send notification through available channels with fallback
@@ -36,6 +50,11 @@ export async function sendNotification(
         // Update escalation document
         await updateEscalationChannel(escalation.id, 'telegram');
         
+        logger.logNotification('telegram', true, {
+          escalationId: escalation.id,
+          messageId: result.messageId,
+        });
+        
         return {
           sent: true,
           channel: 'telegram',
@@ -45,7 +64,9 @@ export async function sendNotification(
     }
   } catch (error) {
     errors.push(`Telegram: ${(error as Error).message}`);
-    console.error('Telegram notification failed:', error);
+    logger.error('Telegram notification failed', error as Error, {
+      escalationId: escalation.id,
+    });
   }
   
   // Try iMessage as fallback
@@ -57,6 +78,11 @@ export async function sendNotification(
         // Update escalation document
         await updateEscalationChannel(escalation.id, 'imessage');
         
+        logger.logNotification('imessage', true, {
+          escalationId: escalation.id,
+          messageId: result.messageId,
+        });
+        
         return {
           sent: true,
           channel: 'imessage',
@@ -66,7 +92,9 @@ export async function sendNotification(
     }
   } catch (error) {
     errors.push(`iMessage: ${(error as Error).message}`);
-    console.error('iMessage notification failed:', error);
+    logger.error('iMessage notification failed', error as Error, {
+      escalationId: escalation.id,
+    });
   }
   
   // Try email as final fallback
@@ -79,6 +107,11 @@ export async function sendNotification(
         // Update escalation document
         await updateEscalationChannel(escalation.id, 'email');
         
+        logger.logNotification('email', true, {
+          escalationId: escalation.id,
+          messageId: result.messageId,
+        });
+        
         return {
           sent: true,
           channel: 'email',
@@ -88,12 +121,17 @@ export async function sendNotification(
     }
   } catch (error) {
     errors.push(`Email: ${(error as Error).message}`);
-    console.error('Email notification failed:', error);
+    logger.error('Email notification failed', error as Error, {
+      escalationId: escalation.id,
+    });
   }
   
   // All channels failed
   const errorMessage = `All notification channels failed: ${errors.join('; ')}`;
-  console.error('Notification failed for escalation', escalation.id, errorMessage);
+  logger.error('All notification channels failed', undefined, {
+    escalationId: escalation.id,
+    errors,
+  });
   
   return {
     sent: false,
@@ -109,9 +147,8 @@ async function updateEscalationChannel(
   escalationId: string,
   channel: string
 ): Promise<void> {
-  const { getFirestore } = await import('firebase-admin/firestore');
-  const db = getFirestore();
-  
+  const db = getDb();
+
   await db.collection('escalations').doc(escalationId).update({
     notificationChannel: channel,
     notificationSentAt: new Date(),

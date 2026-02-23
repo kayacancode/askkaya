@@ -2,6 +2,8 @@ import { getAdminDb } from '@/lib/firebase-admin'
 import { Client } from '@/lib/types'
 import Link from 'next/link'
 
+export const dynamic = 'force-dynamic'
+
 async function getClients(): Promise<Client[]> {
   const db = getAdminDb()
   const snapshot = await db.collection('clients').get()

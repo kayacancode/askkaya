@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isClientOwner(clientId) {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/clients/$(clientId)/users/$(request.auth.uid));
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+             request.auth.token.admin == true;
+    }
+    
+    // Clients collection - only accessible to authorized users
+    match /clients/{clientId} {
+      // Clients can read their own data
+      allow read: if isClientOwner(clientId) || isAdmin();
+      // Only admins can create/update/delete clients
+      allow write: if isAdmin();
+      
+      // Client users subcollection
+      match /users/{userId} {
+        allow read: if isClientOwner(clientId) || isAdmin();
+        allow write: if isAdmin();
+      }
+      
+      // Usage statistics - read-only for clients
+      match /usage/{usageId} {
+        allow read: if isClientOwner(clientId) || isAdmin();
+        allow write: if false; // Only Cloud Functions can write
+      }
+      
+      // Billing information - read-only for clients
+      match /billing/{billingId} {
+        allow read: if isClientOwner(clientId) || isAdmin();
+        allow write: if false; // Only Cloud Functions can write
+      }
+    }
+    
+    // Knowledge base articles - client-specific or global
+    match /kb_articles/{articleId} {
+      // Read: clients can read their own articles or global articles
+      allow read: if isAuthenticated() && (
+        !resource.data.keys().hasAny(['clientId']) ||
+        isClientOwner(resource.data.clientId) ||
+        isAdmin()
+      );
+      // Write: only admins
+      allow write: if isAdmin();
+    }
+    
+    // Escalations - clients can read their own, admins can read/write all
+    match /escalations/{escalationId} {
+      allow read: if isClientOwner(resource.data.clientId) || isAdmin();
+      allow create: if false; // Only Cloud Functions can create
+      allow update: if isAdmin(); // Admins can update status
+      allow delete: if false; // Never delete, keep audit trail
+    }
+    
+    // Rate limiting documents - internal use only
+    match /rate_limits/{clientId} {
+      allow read, write: if false; // Only Cloud Functions
+    }
+    
+    // Stripe webhook events - internal use only
+    match /stripe_events/{eventId} {
+      allow read: if isAdmin();
+      allow write: if false; // Only Cloud Functions
+    }
+    
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

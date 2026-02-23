@@ -6,11 +6,19 @@
 
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-  apiKey: process.env['OPENAI_API_KEY'],
-});
-
 const EMBEDDING_MODEL = 'text-embedding-3-small';
+
+// Lazy-initialize OpenAI client to allow env vars to load first
+let _openai: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    _openai = new OpenAI({
+      apiKey: process.env['OPENAI_API_KEY'],
+      baseURL: process.env['OPENAI_BASE_URL'],
+    });
+  }
+  return _openai;
+}
 const MAX_RETRIES = 1;
 
 /**
@@ -22,7 +30,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const response = await openai.embeddings.create({
+      const response = await getOpenAI().embeddings.create({
         model: EMBEDDING_MODEL,
         input: text,
       });
@@ -58,7 +66,7 @@ export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
   
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const response = await openai.embeddings.create({
+      const response = await getOpenAI().embeddings.create({
         model: EMBEDDING_MODEL,
         input: texts,
       });

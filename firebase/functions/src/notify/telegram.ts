@@ -195,7 +195,7 @@ async function autoLearn(escalationId: string, answer: string): Promise<string> 
   const kbRef = await db.collection('kb').add(kbArticle);
   
   // Generate embedding
-  const { generateEmbedding } = await import('../services/embeddings');
+  const { generateEmbedding } = await import('../services/embeddings.js');
   const embeddingText = `${articleTitle}\n\n${answer}`;
   const embedding = await generateEmbedding(embeddingText);
   

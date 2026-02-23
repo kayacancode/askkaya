@@ -1,76 +1,390 @@
-   1	   1	   1	   1	   1	   1	/**
-   2	   2	   2	   2	   2	   2	 * AskKaya Cloud Functions Entry Point
-   3	   3	   3	   3	   3	   3	 * 
-   4	   4	   4	   4	   4	   4	 * Firebase Cloud Functions v2 for the AskKaya platform
-   5	   5	   5	   5	   5	   5	 */
-   6	   6	   6	   6	   6	   6	
-   7	   7	   7	   7	   7	   7	import { onDocumentCreated } from 'firebase-functions/v2/firestore';
-   8	   8	   8	   8	   8	   8	import { onRequest } from 'firebase-functions/v2/https';
-   9	   9	   9	   9	   9	   9	import { sendNotification } from './notify/router';
-  10	  10	  10	  10	  10	  10	import { handleTelegramUpdate } from './notify/telegram';
-  11	  11	  11	  11	  11	  11	import type { Escalation, TelegramUpdate } from './notify/types';
-  12	  12	  12	  12	  12	  12	
-  13	  13	  13	  13	  13	  13	/**
-  14	  14	  14	  14	  14	  14	 * Firestore trigger: Send notification when new escalation is created
-  15	  15	  15	  15	  15	  15	 */
-  16	  16	  16	  16	  16	  16	export const onEscalationCreated = onDocumentCreated(
-  17	  17	  17	  17	  17	  17	  'escalations/{escalationId}',
-  18	  18	  18	  18	  18	  18	  async (event) => {
-  19	  19	  19	  19	  19	  19	    const escalationData = event.data?.data();
-  20	  20	  20	  20	  20	  20	    
-  21	  21	  21	  21	  21	  21	    if (!escalationData) {
-  22	  22	  22	  22	  22	  22	      console.error('No escalation data in event');
-  23	  23	  23	  23	  23	  23	      return;
-  24	  24	  24	  24	  24	  24	    }
-  25	  25	  25	  25	  25	  25	    
-  26	  26	  26	  26	  26	  26	    const escalation: Escalation = {
-  27	  27	  27	  27	  27	  27	      id: event.params.escalationId,
-  28	  28	  28	  28	  28	  28	      clientId: escalationData['clientId'],
-  29	  29	  29	  29	  29	  29	      clientName: escalationData['clientName'],
-  30	  30	  30	  30	  30	  30	      query: escalationData['query'],
-  31	  31	  31	  31	  31	  31	      contextTags: escalationData['contextTags'] || [],
-  32	  32	  32	  32	  32	  32	      status: escalationData['status'] || 'pending',
-  33	  33	  33	  33	  33	  33	      createdAt: escalationData['createdAt'],
-  34	  34	  34	  34	  34	  34	    };
-  35	  35	  35	  35	  35	  35	    
-  36	  36	  36	  36	  36	  36	    try {
-  37	  37	  37	  37	  37	  37	      const result = await sendNotification(escalation);
-  38	  38	  38	  38	  38	  38	      console.log('Notification sent:', result);
-  39	  39	  39	  39	  39	  39	    } catch (error) {
-  40	  40	  40	  40	  40	  40	      console.error('Failed to send notification:', error);
-  41	  41	  41	  41	  41	  41	    }
-  42	  42	  42	  42	  42	  42	  }
-  43	  43	  43	  43	  43	  43	);
-  44	  44	  44	  44	  44	  44	
-  45	  45	  45	  45	  45	  45	/**
-  46	  46	  46	  46	  46	  46	 * HTTP endpoint: Telegram webhook receiver
-  47	  47	  47	  47	  47	  47	 */
-  48	  48	  48	  48	  48	  48	export const telegramWebhook = onRequest(async (req, res) => {
-  49	  49	  49	  49	  49	  49	  // Only accept POST requests
-  50	  50	  50	  50	  50	  50	  if (req.method !== 'POST') {
-  51	  51	  51	  51	  51	  51	    res.status(405).send('Method Not Allowed');
-  52	  52	  52	  52	  52	  52	    return;
-  53	  53	  53	  53	  53	  53	  }
-  54	  54	  54	  54	  54	  54	  
-  55	  55	  55	  55	  55	  55	  try {
-  56	  56	  56	  56	  56	  56	    const update = req.body as TelegramUpdate;
-  57	  57	  57	  57	  57	  57	    
-  58	  58	  58	  58	  58	  58	    if (!update) {
-  59	  59	  59	  59	  59	  59	      res.status(400).send('Invalid request body');
-  60	  60	  60	  60	  60	  60	      return;
-  61	  61	  61	  61	  61	  61	    }
-  62	  62	  62	  62	  62	  62	    
-  63	  63	  63	  63	  63	  63	    const result = await handleTelegramUpdate(update);
-  64	  64	  64	  64	  64	  64	    
-  65	  65	  65	  65	  65	  65	    res.status(200).json({
-  66	  66	  66	  66	  66	  66	      ok: true,
-  67	  67	  67	  67	  67	  67	      result,
-  68	  68	  68	  68	  68	  68	    });
-  69	  69	  69	  69	  69	  69	  } catch (error) {
-  70	  70	  70	  70	  70	  70	    console.error('Telegram webhook error:', error);
-  71	  71	  71	  71	  71	  71	    res.status(500).json({
-  72	  72	  72	  72	  72	  72	      ok: false,
-  73	  73	  73	  73	  73	  73	      error: (error as Error).message,
-  74	  74	  74	  74	  74	  74	    });
-  75	  75	  75	  75	  75	  75	  }
-  76	  76	  76	  76	  76	  76	});
+/**
+ * AskKaya Cloud Functions Entry Point
+ *
+ * Firebase Cloud Functions v2 for the AskKaya platform
+ */
+
+import { onDocumentCreated } from 'firebase-functions/v2/firestore';
+import { onRequest } from 'firebase-functions/v2/https';
+import { sendNotification } from './notify/router';
+import { handleTelegramUpdate } from './notify/telegram';
+import type { Escalation, TelegramUpdate } from './notify/types';
+import * as logger from './utils/logger';
+
+// API imports
+import { processQuery, healthCheck } from './api/query';
+import { authenticateRequest, type AuthenticatedRequest, type AuthResponse } from './middleware/auth';
+import { handleStripeWebhook } from './billing/stripe';
+import { verifyWebhookSignature, parseGitHubPush, type GitHubPushPayload } from './processing/webhook';
+import * as admin from 'firebase-admin';
+
+// Lazy initialize Firebase Admin and Firestore
+function getDb(): admin.firestore.Firestore {
+  if (!admin.apps.length) {
+    admin.initializeApp();
+  }
+  return admin.firestore();
+}
+
+/**
+ * Firestore trigger: Send notification when new escalation is created
+ */
+export const onEscalationCreated = onDocumentCreated(
+  'escalations/{escalationId}',
+  async (event) => {
+    const escalationId = event.params.escalationId;
+    const escalationData = event.data?.data();
+
+    if (!escalationData) {
+      logger.error('No escalation data in event', undefined, { escalationId });
+      return;
+    }
+
+    const escalation: Escalation = {
+      id: escalationId,
+      clientId: escalationData['clientId'] as string,
+      clientName: escalationData['clientName'] as string,
+      query: escalationData['query'] as string,
+      contextTags: (escalationData['contextTags'] as string[]) || [],
+      status: (escalationData['status'] as 'pending' | 'answered' | 'closed') || 'pending',
+      createdAt: escalationData['createdAt'] as Date,
+    };
+
+    logger.info('Processing escalation', {
+      escalationId,
+      clientId: escalation.clientId,
+    });
+
+    try {
+      const result = await sendNotification(escalation);
+      const channelUsed = result.channel ?? 'unknown';
+      logger.logNotification(channelUsed, result.sent, {
+        escalationId,
+        messageId: result.messageId,
+      });
+    } catch (error) {
+      logger.error('Failed to send notification', error as Error, {
+        escalationId,
+        clientId: escalation.clientId,
+      });
+    }
+  }
+);
+
+/**
+ * HTTP endpoint: Telegram webhook receiver
+ */
+export const telegramWebhook = onRequest({ invoker: 'public' }, async (req, res) => {
+  const startTime = Date.now();
+
+  logger.logRequest(req.method, req.path, {
+    userAgent: req.headers['user-agent'],
+  });
+
+  // Only accept POST requests
+  if (req.method !== 'POST') {
+    logger.warn('Invalid method for webhook', {
+      method: req.method,
+      path: req.path,
+    });
+    res.status(405).send('Method Not Allowed');
+    return;
+  }
+
+  try {
+    const update = req.body as TelegramUpdate;
+
+    if (!update) {
+      logger.warn('Invalid request body', {
+        hasBody: !!req.body,
+      });
+      res.status(400).send('Invalid request body');
+      return;
+    }
+
+    logger.debug('Processing Telegram update', {
+      updateId: update.update_id,
+      hasMessage: !!update.message,
+    });
+
+    const result = await handleTelegramUpdate(update);
+
+    const durationMs = Date.now() - startTime;
+    logger.logRequestComplete(req.method, req.path, 200, durationMs, {
+      updateId: update.update_id,
+    });
+
+    res.status(200).json({
+      ok: true,
+      result,
+    });
+  } catch (error) {
+    const durationMs = Date.now() - startTime;
+    logger.error('Telegram webhook error', error as Error, {
+      durationMs,
+    });
+
+    logger.logRequestComplete(req.method, req.path, 500, durationMs);
+
+    res.status(500).json({
+      ok: false,
+      error: (error as Error).message,
+    });
+  }
+});
+
+/**
+ * HTTP endpoint: Query API
+ * Authenticated endpoint for processing client queries
+ */
+export const queryApi = onRequest({ invoker: 'public' }, async (req, res) => {
+  const startTime = Date.now();
+
+  logger.logRequest(req.method, req.path, {
+    clientId: req.headers['x-client-id'],
+  });
+
+  // Only accept POST requests
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+
+  // Run authentication middleware
+  const authReq = req as unknown as AuthenticatedRequest;
+  const authRes = res as unknown as AuthResponse;
+
+  await authenticateRequest(authReq, authRes, async () => {
+    try {
+      const { question } = req.body as { question?: string };
+      const clientId = req.headers['x-client-id'] as string;
+
+      if (!question || typeof question !== 'string') {
+        res.status(400).json({ error: 'Missing or invalid question' });
+        return;
+      }
+
+      const response = await processQuery(clientId, question);
+
+      const durationMs = Date.now() - startTime;
+      logger.logRequestComplete(req.method, req.path, 200, durationMs, {
+        clientId,
+        escalated: response.escalated,
+      });
+
+      res.status(200).json(response);
+    } catch (error) {
+      const durationMs = Date.now() - startTime;
+      const err = error as Error;
+
+      if (err.message === 'rate_limit_exceeded') {
+        logger.logRequestComplete(req.method, req.path, 429, durationMs);
+        res.status(429).json({ error: 'Rate limit exceeded' });
+        return;
+      }
+
+      if (err.message === 'billing_suspended') {
+        logger.logRequestComplete(req.method, req.path, 403, durationMs);
+        res.status(403).json({ error: 'billing_suspended', message: 'Subscription inactive' });
+        return;
+      }
+
+      logger.error('Query API error', err, { durationMs });
+      logger.logRequestComplete(req.method, req.path, 500, durationMs);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+});
+
+/**
+ * HTTP endpoint: Health check
+ */
+export const healthApi = onRequest({ invoker: 'public' }, (req, res) => {
+  logger.logRequest(req.method, req.path);
+
+  if (req.method !== 'GET') {
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+
+  const health = healthCheck();
+  res.status(200).json(health);
+});
+
+/**
+ * HTTP endpoint: Stripe webhook receiver
+ */
+export const stripeWebhook = onRequest({ invoker: 'public' }, async (req, res) => {
+  const startTime = Date.now();
+
+  logger.logRequest(req.method, req.path, {
+    hasSignature: !!req.headers['stripe-signature'],
+  });
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+
+  try {
+    // Get raw body - Firebase Functions v2 provides rawBody
+    const rawBody = (req as { rawBody?: Buffer }).rawBody ?? req.body;
+
+    const result = await handleStripeWebhook({
+      body: rawBody,
+      headers: req.headers as { [key: string]: string | undefined },
+    });
+
+    const durationMs = Date.now() - startTime;
+    logger.logRequestComplete(req.method, req.path, 200, durationMs);
+
+    res.status(200).json(result);
+  } catch (error) {
+    const durationMs = Date.now() - startTime;
+    logger.error('Stripe webhook error', error as Error, { durationMs });
+    logger.logRequestComplete(req.method, req.path, 400, durationMs);
+
+    res.status(400).json({ error: 'Webhook processing failed' });
+  }
+});
+
+/**
+ * HTTP endpoint: GitHub webhook receiver for KB ingestion
+ */
+export const githubWebhook = onRequest({ invoker: 'public' }, async (req, res) => {
+  const startTime = Date.now();
+
+  logger.logRequest(req.method, req.path, {
+    event: req.headers['x-github-event'],
+  });
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+
+  try {
+    // Verify signature
+    const signature = req.headers['x-hub-signature-256'] as string;
+    const secret = process.env['GITHUB_WEBHOOK_SECRET'] ?? '';
+    const payload = JSON.stringify(req.body);
+
+    if (!verifyWebhookSignature(payload, signature, secret)) {
+      logger.warn('Invalid GitHub webhook signature');
+      res.status(401).json({ error: 'Invalid signature' });
+      return;
+    }
+
+    // Only process push events
+    const event = req.headers['x-github-event'];
+    if (event !== 'push') {
+      res.status(200).json({ message: 'Event ignored', event });
+      return;
+    }
+
+    // Parse push payload
+    const pushPayload = req.body as GitHubPushPayload;
+    const filesToProcess = parseGitHubPush(pushPayload);
+
+    logger.info('Processing GitHub push', {
+      repo: pushPayload.repository.full_name,
+      filesCount: filesToProcess.length,
+    });
+
+    // Queue files for processing (create Firestore documents)
+    const batch = getDb().batch();
+    for (const file of filesToProcess) {
+      const docRef = getDb().collection('kb_processing_queue').doc();
+      batch.set(docRef, {
+        path: file.path,
+        target: file.target,
+        repository: pushPayload.repository.full_name,
+        status: 'pending',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
+
+    const durationMs = Date.now() - startTime;
+    logger.logRequestComplete(req.method, req.path, 200, durationMs, {
+      filesQueued: filesToProcess.length,
+    });
+
+    res.status(200).json({
+      received: true,
+      filesQueued: filesToProcess.length,
+    });
+  } catch (error) {
+    const durationMs = Date.now() - startTime;
+    logger.error('GitHub webhook error', error as Error, { durationMs });
+    logger.logRequestComplete(req.method, req.path, 500, durationMs);
+
+    res.status(500).json({ error: 'Webhook processing failed' });
+  }
+});
+
+/**
+ * Firestore trigger: Process queued KB articles
+ * Generates embeddings when new articles are queued
+ */
+export const onKBQueueItemCreated = onDocumentCreated(
+  'kb_processing_queue/{itemId}',
+  async (event) => {
+    const itemId = event.params.itemId;
+    const data = event.data?.data();
+
+    if (!data) {
+      logger.error('No data in KB queue item', undefined, { itemId });
+      return;
+    }
+
+    const path = data['path'] as string;
+    const target = data['target'] as string | { clientId: string };
+    const repository = data['repository'] as string;
+
+    logger.info('Processing KB queue item', {
+      itemId,
+      path,
+      target,
+    });
+
+    try {
+      // Update status to processing
+      await event.data?.ref.update({ status: 'processing' });
+
+      // In a real implementation, we'd fetch the file content from GitHub API
+      // For now, we'll create a placeholder article
+      const isGlobal = target === 'global';
+      const clientId = typeof target === 'object' ? target.clientId : null;
+
+      // Create KB article
+      const articleRef = await getDb().collection('kb_articles').add({
+        title: path.split('/').pop()?.replace('.md', '') ?? 'Untitled',
+        source: 'github',
+        source_url: `https://github.com/${repository}/blob/main/${path}`,
+        is_global: isGlobal,
+        client_id: clientId,
+        status: 'pending_embedding',
+        created_at: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      // Update queue item with reference
+      await event.data?.ref.update({
+        status: 'completed',
+        articleId: articleRef.id,
+        completedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      logger.info('KB article created', {
+        itemId,
+        articleId: articleRef.id,
+      });
+    } catch (error) {
+      logger.error('KB processing failed', error as Error, { itemId });
+      await event.data?.ref.update({
+        status: 'failed',
+        error: (error as Error).message,
+      });
+    }
+  }
+);
