@@ -5,6 +5,14 @@
  */
 
 import { Escalation, SendMessageResult, TelegramUpdate, HandleUpdateResult } from './types';
+import { initializeApp, getApps } from 'firebase-admin/app';
+
+// Ensure Firebase Admin is initialized
+function ensureFirebaseInit() {
+  if (getApps().length === 0) {
+    initializeApp();
+  }
+}
 
 /**
  * Format an escalation alert message for Telegram
@@ -14,24 +22,26 @@ export function formatEscalationAlert(escalation: Escalation): string {
   const tags = escalation.contextTags && escalation.contextTags.length > 0
     ? escalation.contextTags.join(', ')
     : 'none';
-  
+
   // Escape special characters for Markdown
   const escapeMarkdown = (text: string): string => {
     return text.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
   };
-  
+
   const clientName = escapeMarkdown(escalation.clientName);
   const query = escapeMarkdown(escalation.query);
-  const escId = escapeMarkdown(escalation.id);
-  
-  return `🚨 *Escalation: ${escId}*
+  // Include ID in a parseable format: [ID:xxx]
+  const escId = escalation.id;
+
+  return `🚨 *Escalation*
+\\[ID:${escId}\\]
 
 *Client:* ${clientName}
 *Query:* ${query}
 
 *Context Tags:* ${tags}
 
-_Reply to this message with the answer to resolve the ticket\\._`;
+_Reply to this message to answer\\. Type DISMISS to close without saving\\._`;
 }
 
 /**
@@ -92,49 +102,64 @@ export async function sendMessage(
 /**
  * Handle incoming Telegram webhook update
  * Processes replies to escalation alerts
+ *
+ * - Reply with answer → saves to KB + closes ticket
+ * - Reply with "DISMISS" → closes ticket without saving
  */
 export async function handleTelegramUpdate(
   update: TelegramUpdate
 ): Promise<HandleUpdateResult> {
   const message = update.message;
-  
+
   // Ignore if not a reply
   if (!message || !message.reply_to_message) {
     return { ignored: true };
   }
-  
-  // Extract escalation ID from original message
+
+  // Extract escalation ID from original message [ID:xxx] or ID:xxx
   const originalText = message.reply_to_message.text || '';
-  const escIdMatch = originalText.match(/esc_[a-zA-Z0-9_-]+/);
-  
-  if (!escIdMatch) {
+  // Try multiple patterns - Markdown might escape brackets differently
+  const escIdMatch = originalText.match(/\[ID:([a-zA-Z0-9]+)\]/)
+    || originalText.match(/ID:([a-zA-Z0-9]+)/);
+
+  if (!escIdMatch || !escIdMatch[1]) {
     return { ignored: true };
   }
-  
-  const escalationId = escIdMatch[0];
-  const answer = message.text || '';
-  
+
+  const escalationId = escIdMatch[1];
+  const answer = (message.text || '').trim();
+
   if (!answer) {
     throw new Error('Reply message has no text');
   }
-  
-  // Answer the ticket (mock implementation - will be replaced with actual Firestore call)
-  await answerTicket(escalationId, answer);
-  
-  // Trigger auto-learn
-  const kbArticleId = await autoLearn(escalationId, answer);
-  
-  // Send confirmation
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  if (botToken) {
-    const confirmationText = `✅ Ticket ${escalationId} updated successfully!\\n\\nAnswer recorded and added to knowledge base\\.`;
-    
-    await sendMessage(
-      message.chat.id.toString(),
-      confirmationText
-    );
+
+  const isDismiss = answer.toUpperCase() === 'DISMISS';
+  const chatId = message.chat.id.toString();
+
+  if (isDismiss) {
+    // Close without saving to KB
+    await dismissTicket(escalationId);
+
+    await sendMessage(chatId, `✅ Ticket dismissed\\.`);
+
+    return {
+      escalationId,
+      answer: '',
+      ticketUpdated: true,
+      autoLearnTriggered: false,
+    };
   }
-  
+
+  // Normal flow: answer ticket + auto-learn
+  await answerTicket(escalationId, answer);
+
+  const kbArticleId = await autoLearn(escalationId, answer);
+
+  await sendMessage(
+    chatId,
+    `✅ Ticket answered and added to KB\\.`
+  );
+
   return {
     escalationId,
     answer,
@@ -149,9 +174,10 @@ export async function handleTelegramUpdate(
  * Updates the escalation document with the answer
  */
 async function answerTicket(escalationId: string, answer: string): Promise<void> {
+  ensureFirebaseInit();
   const { getFirestore } = await import('firebase-admin/firestore');
   const db = getFirestore();
-  
+
   await db.collection('escalations').doc(escalationId).update({
     status: 'answered',
     answer,
@@ -160,50 +186,65 @@ async function answerTicket(escalationId: string, answer: string): Promise<void>
 }
 
 /**
- * Auto-learn from answer: create KB article and index it
+ * Dismiss a ticket without saving to KB
  */
-async function autoLearn(escalationId: string, answer: string): Promise<string> {
+async function dismissTicket(escalationId: string): Promise<void> {
+  ensureFirebaseInit();
   const { getFirestore } = await import('firebase-admin/firestore');
   const db = getFirestore();
-  
+
+  await db.collection('escalations').doc(escalationId).update({
+    status: 'dismissed',
+    dismissedAt: new Date(),
+  });
+}
+
+/**
+ * Auto-learn from answer: create KB article with pending_embedding status
+ * The onKBArticleCreated trigger will generate the embedding
+ */
+async function autoLearn(escalationId: string, answer: string): Promise<string> {
+  ensureFirebaseInit();
+  const { getFirestore, FieldValue } = await import('firebase-admin/firestore');
+  const db = getFirestore();
+
   // Get the escalation to extract query and client info
   const escDoc = await db.collection('escalations').doc(escalationId).get();
   const escalation = escDoc.data();
-  
+
   if (!escalation) {
     throw new Error(`Escalation ${escalationId} not found`);
   }
-  
-  const query = escalation.query;
+
+  const query = escalation.query || '';
   const clientId = escalation.clientId;
-  
+
   // Create KB article
-  const articleTitle = query.length > 100 
-    ? query.substring(0, 97) + '...' 
-    : query;
-  
+  const articleTitle = `FAQ: ${query.length > 50 ? query.substring(0, 47) + '...' : query}`;
+
   const kbArticle = {
     title: articleTitle,
     content: answer,
-    createdAt: new Date(),
+    summary: query,
     source: 'escalation',
-    escalationId,
-    clientId,
+    source_id: escalationId,
+    lookup_key: `escalation:${escalationId}`,
+    tags: ['escalation', 'faq'],
+    client_id: clientId || null,
+    is_global: !clientId,
+    status: 'pending_embedding',  // Trigger will generate embedding
+    learned_from_escalation: escalationId,
+    created_at: FieldValue.serverTimestamp(),
   };
-  
-  // Add to KB collection
-  const kbRef = await db.collection('kb').add(kbArticle);
-  
-  // Generate embedding
-  const { generateEmbedding } = await import('../services/embeddings.js');
-  const embeddingText = `${articleTitle}\n\n${answer}`;
-  const embedding = await generateEmbedding(embeddingText);
-  
-  // Store embedding
-  await db.collection('kb').doc(kbRef.id).update({
-    embedding,
-    embeddingUpdatedAt: new Date(),
+
+  // Add to kb_articles collection (correct collection name)
+  const kbRef = await db.collection('kb_articles').add(kbArticle);
+
+  // Update escalation to mark it as learned
+  await db.collection('escalations').doc(escalationId).update({
+    auto_learned: true,
+    kb_article_id: kbRef.id,
   });
-  
+
   return kbRef.id;
 }

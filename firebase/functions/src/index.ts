@@ -16,6 +16,14 @@ import { processQuery, healthCheck } from './api/query';
 import { authenticateRequest, type AuthenticatedRequest, type AuthResponse } from './middleware/auth';
 import { handleStripeWebhook } from './billing/stripe';
 import { verifyWebhookSignature, parseGitHubPush, type GitHubPushPayload } from './processing/webhook';
+import { generateEmbedding } from './services/embeddings';
+import {
+  ingestItem,
+  bulkIngest,
+  parseGranolaExport,
+  parseTelegramExport,
+  type IngestItem,
+} from './api/ingest';
 import * as admin from 'firebase-admin';
 
 // Lazy initialize Firebase Admin and Firestore
@@ -158,13 +166,15 @@ export const queryApi = onRequest({ invoker: 'public' }, async (req, res) => {
     try {
       const { question } = req.body as { question?: string };
       const clientId = req.headers['x-client-id'] as string;
+      // Get userId from authenticated user for personal KB access
+      const userId = authReq.user?.uid;
 
       if (!question || typeof question !== 'string') {
         res.status(400).json({ error: 'Missing or invalid question' });
         return;
       }
 
-      const response = await processQuery(clientId, question);
+      const response = await processQuery(clientId, question, userId);
 
       const durationMs = Date.now() - startTime;
       logger.logRequestComplete(req.method, req.path, 200, durationMs, {
@@ -245,6 +255,90 @@ export const stripeWebhook = onRequest({ invoker: 'public' }, async (req, res) =
     logger.logRequestComplete(req.method, req.path, 400, durationMs);
 
     res.status(400).json({ error: 'Webhook processing failed' });
+  }
+});
+
+/**
+ * HTTP endpoint: KB Ingestion API
+ * Accepts content from various sources (Granola, Telegram, manual, etc.)
+ *
+ * POST /ingestApi
+ * Body: { items: IngestItem[] } or { source: 'granola'|'telegram', data: ... }
+ */
+export const ingestApi = onRequest({ invoker: 'public' }, async (req, res) => {
+  const startTime = Date.now();
+
+  // Set CORS headers
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  logger.logRequest(req.method, req.path, {
+    source: req.body?.source,
+    itemCount: req.body?.items?.length,
+  });
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+
+  try {
+    // Optional: Authenticate request (can be made mandatory)
+    // const authHeader = req.headers.authorization;
+    // if (authHeader) { /* verify token */ }
+
+    const body = req.body;
+    let items: IngestItem[] = [];
+
+    // Handle different input formats
+    if (body.items && Array.isArray(body.items)) {
+      // Direct items array
+      items = body.items;
+    } else if (body.source === 'granola' && body.data) {
+      // Granola export format
+      items = parseGranolaExport(body.data);
+    } else if (body.source === 'telegram' && body.data) {
+      // Telegram export format
+      items = parseTelegramExport(body.data);
+    } else if (body.content) {
+      // Single item
+      items = [body as IngestItem];
+    } else {
+      res.status(400).json({
+        error: 'Invalid request format',
+        expected: 'items array, source+data, or single item with content',
+      });
+      return;
+    }
+
+    if (items.length === 0) {
+      res.status(400).json({ error: 'No items to ingest' });
+      return;
+    }
+
+    // Perform bulk ingestion
+    const result = await bulkIngest(getDb(), items);
+
+    const durationMs = Date.now() - startTime;
+    logger.logRequestComplete(req.method, req.path, 200, durationMs, {
+      total: result.total,
+      created: result.created,
+      updated: result.updated,
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    const durationMs = Date.now() - startTime;
+    logger.error('Ingestion error', error as Error, { durationMs });
+    logger.logRequestComplete(req.method, req.path, 500, durationMs);
+
+    res.status(500).json({ error: 'Ingestion failed' });
   }
 });
 
@@ -384,6 +478,57 @@ export const onKBQueueItemCreated = onDocumentCreated(
       await event.data?.ref.update({
         status: 'failed',
         error: (error as Error).message,
+      });
+    }
+  }
+);
+
+/**
+ * Firestore trigger: Generate embeddings for KB articles
+ * Triggered when articles are created with status 'pending_embedding'
+ */
+export const onKBArticleCreated = onDocumentCreated(
+  'kb_articles/{articleId}',
+  async (event) => {
+    const articleId = event.params.articleId;
+    const data = event.data?.data();
+
+    if (!data) {
+      logger.error('No data in KB article', undefined, { articleId });
+      return;
+    }
+
+    // Only process articles with pending_embedding status
+    if (data['status'] !== 'pending_embedding') {
+      return;
+    }
+
+    const title = data['title'] as string || '';
+    const content = data['content'] as string || '';
+
+    logger.info('Generating embedding for KB article', { articleId, title });
+
+    try {
+      // Combine title and content for embedding
+      const textForEmbedding = `${title}\n\n${content}`;
+      const embedding = await generateEmbedding(textForEmbedding);
+
+      // Update article with embedding
+      await event.data?.ref.update({
+        embedding,
+        status: 'active',
+        embedding_generated_at: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      logger.info('Embedding generated for KB article', {
+        articleId,
+        embeddingDimensions: embedding.length,
+      });
+    } catch (error) {
+      logger.error('Embedding generation failed', error as Error, { articleId });
+      await event.data?.ref.update({
+        status: 'embedding_failed',
+        embedding_error: (error as Error).message,
       });
     }
   }

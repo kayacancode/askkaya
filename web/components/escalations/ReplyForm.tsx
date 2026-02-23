@@ -14,9 +14,9 @@ export function ReplyForm({
   onSubmit,
 }: ReplyFormProps) {
   const [answer, setAnswer] = useState('');
-  const [autoLearn, setAutoLearn] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -24,25 +24,34 @@ export function ReplyForm({
     setSubmitting(true);
     setError(null);
 
+    const isDismiss = answer.trim().toUpperCase() === 'DISMISS';
+
     try {
-      await onSubmit(answer, autoLearn);
+      if (isDismiss) {
+        // Just close the escalation without reply or learning
+        await onSubmit('', false);
+        setSuccessMessage('Escalation dismissed');
+      } else {
+        // Normal flow: reply + auto-learn
+        await onSubmit(answer, true);
 
-      // If telegram chat, send reply
-      if (telegramChatId) {
-        await fetch('/api/telegram/reply', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chatId: telegramChatId, message: answer }),
-        });
-      }
+        // Send reply via Telegram if configured
+        if (telegramChatId) {
+          await fetch('/api/telegram/reply', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chatId: telegramChatId, message: answer }),
+          });
+        }
 
-      // If auto-learn, trigger KB learning
-      if (autoLearn) {
+        // Auto-learn to KB
         await fetch('/api/kb/learn', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ escalationId }),
         });
+
+        setSuccessMessage('Reply sent and added to KB');
       }
 
       setSuccess(true);
@@ -64,7 +73,7 @@ export function ReplyForm({
 
       {success && (
         <div className="rounded-md bg-green-50 p-4">
-          <p className="text-sm text-green-700">Reply sent successfully</p>
+          <p className="text-sm text-green-700">{successMessage}</p>
         </div>
       )}
 
@@ -83,23 +92,13 @@ export function ReplyForm({
           rows={4}
           required
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-          placeholder="Type your answer here..."
+          placeholder="Type your answer (or DISMISS to close without saving)..."
         />
       </div>
 
-      <div className="flex items-center">
-        <input
-          id="auto-learn"
-          type="checkbox"
-          checked={autoLearn}
-          onChange={(e) => setAutoLearn(e.target.checked)}
-          aria-label="Add to KB"
-          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-        />
-        <label htmlFor="auto-learn" className="ml-2 block text-sm text-gray-700">
-          Add to KB (auto-learn from this Q&A)
-        </label>
-      </div>
+      <p className="text-xs text-gray-500">
+        Replies are automatically saved to the KB. Type DISMISS to close without saving.
+      </p>
 
       <div className="flex justify-end">
         <button
@@ -107,7 +106,7 @@ export function ReplyForm({
           disabled={submitting || !answer.trim()}
           className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
         >
-          {submitting ? 'Sending...' : 'Submit Reply'}
+          {submitting ? 'Processing...' : answer.trim().toUpperCase() === 'DISMISS' ? 'Dismiss' : 'Reply & Learn'}
         </button>
       </div>
     </form>

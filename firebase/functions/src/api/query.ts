@@ -74,10 +74,15 @@ async function checkRateLimit(clientId: string): Promise<boolean> {
  * Process a query request
  * Returns response with confidence score and sources
  * Escalates to Kaya if confidence is low
+ *
+ * @param clientId - Client ID for access control
+ * @param question - User's question
+ * @param userId - Optional user ID for personal KB access
  */
 export async function processQuery(
   clientId: string,
-  question: string
+  question: string,
+  userId?: string
 ): Promise<QueryResponse> {
   const startTime = Date.now();
   const db = admin.firestore();
@@ -111,9 +116,11 @@ export async function processQuery(
   
   try {
     // Step 1: Retrieve relevant KB articles using RAG
+    // Pass userId for personal KB access control
     const ragResults = await retrieveRelevantArticles(
       question,
       clientId,
+      userId,  // For personal article access
       setupContext
     );
     
