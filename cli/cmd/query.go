@@ -104,7 +104,7 @@ func runQuery(cmd *cobra.Command, args []string) error {
 
 	// Note if escalated
 	if response.Escalated {
-		fmt.Println("\nNote: This question has been escalated for human review.")
+		fmt.Println("\n📬 Kaya has been notified and will get back to you shortly!")
 	}
 
 	return nil

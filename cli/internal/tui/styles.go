@@ -59,6 +59,26 @@ var (
 			Padding(1, 2).
 			MarginTop(1)
 
+	responseBoxStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(secondaryColor).
+				Padding(1, 2)
+
+	// Loading style
+	loadingStyle = lipgloss.NewStyle().
+			Foreground(secondaryColor).
+			Bold(true)
+
+	// Escalation style
+	escalationStyle = lipgloss.NewStyle().
+				Foreground(warningColor).
+				Bold(true)
+
+	// Scroll info style
+	scrollInfoStyle = lipgloss.NewStyle().
+				Foreground(subtleColor).
+				Italic(true)
+
 	// Confidence styles
 	confidenceHighStyle = lipgloss.NewStyle().
 				Foreground(successColor).

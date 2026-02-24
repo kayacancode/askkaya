@@ -35,7 +35,7 @@ func NewClient(baseURL, token, clientID string) *APIClient {
 		token:      token,
 		clientID:   clientID,
 		HTTPClient: &http.Client{},
-		timeout:    10 * time.Second,
+		timeout:    60 * time.Second, // RAG + LLM can take time, especially on cold starts
 	}
 }
 

@@ -134,6 +134,7 @@ export async function handleTelegramUpdate(
   }
 
   const isDismiss = answer.toUpperCase() === 'DISMISS';
+  const isGlobal = answer.toUpperCase().startsWith('GLOBAL:');
   const chatId = message.chat.id.toString();
 
   if (isDismiss) {
@@ -150,14 +151,18 @@ export async function handleTelegramUpdate(
     };
   }
 
+  // Extract actual answer (remove GLOBAL: prefix if present)
+  const actualAnswer = isGlobal ? answer.substring(7).trim() : answer;
+
   // Normal flow: answer ticket + auto-learn
-  await answerTicket(escalationId, answer);
+  await answerTicket(escalationId, actualAnswer);
 
-  const kbArticleId = await autoLearn(escalationId, answer);
+  const kbArticleId = await autoLearn(escalationId, actualAnswer, isGlobal);
 
+  const scope = isGlobal ? 'global' : 'client\\-specific';
   await sendMessage(
     chatId,
-    `✅ Ticket answered and added to KB\\.`
+    `✅ Ticket answered and added to KB \\(${scope}\\)\\.`
   );
 
   return {
@@ -202,8 +207,10 @@ async function dismissTicket(escalationId: string): Promise<void> {
 /**
  * Auto-learn from answer: create KB article with pending_embedding status
  * The onKBArticleCreated trigger will generate the embedding
+ *
+ * @param isGlobal - If true, article is visible to all clients. If false, only to original client.
  */
-async function autoLearn(escalationId: string, answer: string): Promise<string> {
+async function autoLearn(escalationId: string, answer: string, isGlobal: boolean = false): Promise<string> {
   ensureFirebaseInit();
   const { getFirestore, FieldValue } = await import('firebase-admin/firestore');
   const db = getFirestore();
@@ -220,6 +227,7 @@ async function autoLearn(escalationId: string, answer: string): Promise<string> 
   const clientId = escalation.clientId;
 
   // Create KB article
+  // Use GLOBAL: prefix to make answer visible to all clients
   const articleTitle = `FAQ: ${query.length > 50 ? query.substring(0, 47) + '...' : query}`;
 
   const kbArticle = {
@@ -230,8 +238,8 @@ async function autoLearn(escalationId: string, answer: string): Promise<string> 
     source_id: escalationId,
     lookup_key: `escalation:${escalationId}`,
     tags: ['escalation', 'faq'],
-    client_id: clientId || null,
-    is_global: !clientId,
+    is_global: isGlobal,
+    client_id: isGlobal ? null : (clientId || null),
     status: 'pending_embedding',  // Trigger will generate embedding
     learned_from_escalation: escalationId,
     created_at: FieldValue.serverTimestamp(),

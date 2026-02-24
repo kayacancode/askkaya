@@ -7,7 +7,10 @@ import (
 	"github.com/askkaya/cli/internal/api"
 	"github.com/askkaya/cli/internal/auth"
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/reflow/wordwrap"
 )
 
 // APIClient interface for making API calls
@@ -35,6 +38,10 @@ type App struct {
 	response   *api.QueryResponse
 	err        error
 	loading    bool
+
+	// Response viewport for scrolling
+	viewport    viewport.Model
+	viewportSet bool
 }
 
 // NewApp creates a new TUI application
@@ -88,6 +95,8 @@ func newApp(tokens *auth.AuthTokens, apiClient APIClient) *App {
 		passwordInput: passwordInput,
 		queryInput:    queryInput,
 		focusIndex:    0,
+		width:         80, // default
+		height:        24, // default
 	}
 }
 
@@ -98,6 +107,8 @@ func (a *App) Init() tea.Cmd {
 
 // Update handles messages and updates the model
 func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -121,20 +132,42 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEnter:
 			if a.state == "query" && a.queryInput.Value() != "" && !a.loading {
 				a.loading = true
+				a.response = nil // Clear previous response
+				a.viewportSet = false
 				return a, a.sendQuery()
 			}
 			return a, nil
 		}
 
+		// Handle viewport scrolling when response is shown
+		if a.response != nil && a.viewportSet {
+			switch msg.String() {
+			case "up", "k":
+				a.viewport.LineUp(1)
+			case "down", "j":
+				a.viewport.LineDown(1)
+			case "pgup":
+				a.viewport.HalfViewUp()
+			case "pgdown":
+				a.viewport.HalfViewDown()
+			}
+		}
+
 	case tea.WindowSizeMsg:
 		a.width = msg.Width
 		a.height = msg.Height
+
+		// Update viewport size if we have a response
+		if a.response != nil {
+			a.updateViewport()
+		}
 		return a, nil
 
 	case queryResponseMsg:
 		a.loading = false
 		a.response = &msg.response
 		a.err = nil
+		a.updateViewport()
 		return a, nil
 
 	case queryErrorMsg:
@@ -151,11 +184,77 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			a.passwordInput, cmd = a.passwordInput.Update(msg)
 		}
-	} else {
+	} else if !a.loading {
 		a.queryInput, cmd = a.queryInput.Update(msg)
 	}
+	cmds = append(cmds, cmd)
 
-	return a, cmd
+	// Update viewport
+	if a.viewportSet {
+		a.viewport, cmd = a.viewport.Update(msg)
+		cmds = append(cmds, cmd)
+	}
+
+	return a, tea.Batch(cmds...)
+}
+
+// updateViewport sets up the viewport with the response content
+func (a *App) updateViewport() {
+	if a.response == nil {
+		return
+	}
+
+	// Calculate available width (account for borders and padding)
+	contentWidth := a.width - 8
+	if contentWidth < 40 {
+		contentWidth = 40
+	}
+
+	// Build response content with word wrapping
+	var content strings.Builder
+
+	// Wrap the main response text
+	wrappedText := wordwrap.String(a.response.Text, contentWidth)
+	content.WriteString(wrappedText)
+	content.WriteString("\n")
+
+	// Confidence
+	confidencePercent := int(a.response.Confidence * 100)
+	confidenceStyle := getConfidenceStyle(a.response.Confidence)
+	content.WriteString(fmt.Sprintf("\nConfidence: %s", confidenceStyle.Render(fmt.Sprintf("%d%%", confidencePercent))))
+
+	// Sources
+	if len(a.response.Sources) > 0 {
+		content.WriteString("\n\nSources:")
+		for _, source := range a.response.Sources {
+			content.WriteString("\n")
+			content.WriteString(sourceStyle.Render("• " + source))
+		}
+	}
+
+	// Escalation notice
+	if a.response.Escalated {
+		content.WriteString("\n\n")
+		content.WriteString(escalationStyle.Render("📬 Kaya has been notified and will get back to you shortly!"))
+	}
+
+	// Calculate viewport height (leave room for header, input, and help)
+	viewportHeight := a.height - 12
+	if viewportHeight < 5 {
+		viewportHeight = 5
+	}
+
+	// Create or update viewport
+	if !a.viewportSet {
+		a.viewport = viewport.New(contentWidth, viewportHeight)
+		a.viewport.Style = lipgloss.NewStyle()
+		a.viewportSet = true
+	} else {
+		a.viewport.Width = contentWidth
+		a.viewport.Height = viewportHeight
+	}
+
+	a.viewport.SetContent(content.String())
 }
 
 // View renders the UI
@@ -209,7 +308,7 @@ func (a *App) renderLogin() string {
 func (a *App) renderQuery() string {
 	var b strings.Builder
 
-	b.WriteString(titleStyle.Render("Ask AskKaya"))
+	b.WriteString(titleStyle.Render("AskKaya"))
 	b.WriteString("\n")
 	b.WriteString(subtitleStyle.Render("Query your support knowledge base"))
 	b.WriteString("\n\n")
@@ -223,7 +322,7 @@ func (a *App) renderQuery() string {
 	// Loading state
 	if a.loading {
 		b.WriteString("\n")
-		b.WriteString("Thinking...")
+		b.WriteString(loadingStyle.Render("⏳ Thinking..."))
 		b.WriteString("\n")
 	}
 
@@ -234,36 +333,22 @@ func (a *App) renderQuery() string {
 		b.WriteString("\n")
 	}
 
-	// Response
-	if a.response != nil {
+	// Response in viewport
+	if a.response != nil && a.viewportSet {
 		b.WriteString("\n")
-		b.WriteString(responseStyle.Render(a.response.Text))
+		b.WriteString(responseBoxStyle.Render(a.viewport.View()))
 		b.WriteString("\n")
 
-		// Confidence
-		confidencePercent := int(a.response.Confidence * 100)
-		confidenceStyle := getConfidenceStyle(a.response.Confidence)
-		b.WriteString(fmt.Sprintf("\nConfidence: %s", confidenceStyle.Render(fmt.Sprintf("%d%%", confidencePercent))))
-
-		// Sources
-		if len(a.response.Sources) > 0 {
-			b.WriteString("\n\nSources:")
-			for _, source := range a.response.Sources {
-				b.WriteString("\n")
-				b.WriteString(sourceStyle.Render("• " + source))
-			}
-		}
-
-		// Escalation notice
-		if a.response.Escalated {
-			b.WriteString("\n\n")
-			b.WriteString(warningStyle.Render("This question has been escalated for human review."))
+		// Scroll indicator
+		scrollPercent := a.viewport.ScrollPercent() * 100
+		if a.viewport.TotalLineCount() > a.viewport.Height {
+			b.WriteString(scrollInfoStyle.Render(fmt.Sprintf("↑↓ scroll • %.0f%%", scrollPercent)))
 		}
 	}
 
 	// Help text
-	b.WriteString("\n\n")
-	b.WriteString(helpStyle.Render("Enter: submit • Esc: quit"))
+	b.WriteString("\n")
+	b.WriteString(helpStyle.Render("Enter: submit • ↑↓/jk: scroll • Esc: quit"))
 
 	return b.String()
 }
@@ -292,6 +377,3 @@ func (a *App) sendQuery() tea.Cmd {
 		return queryResponseMsg{response: response}
 	}
 }
-
-// Warning style for escalation notices
-var warningStyle = errorStyle.Copy().Foreground(warningColor)
