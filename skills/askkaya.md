@@ -1,26 +1,29 @@
+---
+name: askkaya
+description: Query the AskKaya knowledge base for help with OpenClaw, Honcho, and other supported tools. Use when users ask questions about setup, configuration, or troubleshooting.
+---
+
 # AskKaya Skill
 
 Query the AskKaya knowledge base for help with OpenClaw, Honcho, and other supported tools.
 
 ## Usage
 
-Use `/askkaya` followed by your question to get AI-powered answers from the knowledge base.
-
-```
-/askkaya How do I set up memory with Honcho?
-/askkaya What are the OpenClaw configuration options?
-/askkaya How do I backup my setup?
-```
-
-## Implementation
-
-When the user invokes `/askkaya <question>`, run the following command:
+When the user asks a question that could be answered by AskKaya (setup help, configuration, troubleshooting), run:
 
 ```bash
 askkaya query "<question>"
 ```
 
-If the CLI is not installed, instruct the user to install it:
+## Examples
+
+- "How do I set up memory with Honcho?" → `askkaya query "How do I set up memory with Honcho?"`
+- "What are the OpenClaw configuration options?" → `askkaya query "What are the OpenClaw configuration options?"`
+- "How do I backup my setup?" → `askkaya query "How do I backup my setup?"`
+
+## If CLI Not Installed
+
+If `askkaya` command is not found, instruct the user:
 
 ```bash
 brew tap kayacancode/askkaya
@@ -29,11 +32,11 @@ askkaya auth signup -c <INVITE_CODE> -e <EMAIL>
 askkaya auth login -e <EMAIL>
 ```
 
-## Response Format
+Contact Kaya for an invite code.
 
-Display the response from AskKaya, including:
+## Response Handling
+
+Display the response including:
 - The answer text
-- Confidence score (if available)
-- Sources referenced (if available)
-
-If confidence is low, inform the user that the question has been escalated to a human.
+- Confidence score (if shown)
+- Note if escalated: "Kaya has been notified and will get back to you shortly!"
