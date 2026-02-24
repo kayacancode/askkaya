@@ -23,7 +23,18 @@ cd askkaya/cli
 go build -o askkaya .
 ```
 
-## Usage
+## Getting Started
+
+AskKaya is invite-only. Contact [Kaya](mailto:kaya@forever22studios.com) to get an invite code.
+
+### Sign Up
+
+```bash
+# Sign up with your invite code
+askkaya auth signup -c YOUR_INVITE_CODE -e your@email.com
+
+# You'll be prompted for a password
+```
 
 ### Authentication
 

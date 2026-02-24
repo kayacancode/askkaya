@@ -11,6 +11,14 @@ brew tap kayacancode/askkaya
 brew install askkaya
 ```
 
+### Sign Up
+
+AskKaya is invite-only. Contact [Kaya](mailto:kaya@forever22studios.com) to get an invite code.
+
+```bash
+askkaya auth signup -c YOUR_INVITE_CODE -e your@email.com
+```
+
 ### Login & Query
 
 ```bash
