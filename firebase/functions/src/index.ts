@@ -24,6 +24,12 @@ import {
   parseTelegramExport,
   type IngestItem,
 } from './api/ingest';
+import {
+  validateInviteCode,
+  signupWithInvite,
+  createInviteCode,
+  listInviteCodes,
+} from './api/invite';
 import * as admin from 'firebase-admin';
 
 // Lazy initialize Firebase Admin and Firestore
@@ -307,6 +313,146 @@ export const meApi = onRequest({ invoker: 'public' }, async (req, res) => {
     } catch (error) {
       logger.error('meApi error', error as Error);
       res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+});
+
+/**
+ * HTTP endpoint: Signup with invite code
+ * Creates a new user account if invite code is valid
+ */
+export const signupApi = onRequest({ invoker: 'public' }, async (req, res) => {
+  // Set CORS headers
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+
+  try {
+    const { invite_code, email, password } = req.body as {
+      invite_code?: string;
+      email?: string;
+      password?: string;
+    };
+
+    if (!invite_code || !email || !password) {
+      res.status(400).json({
+        error: 'Missing required fields',
+        required: ['invite_code', 'email', 'password'],
+      });
+      return;
+    }
+
+    const result = await signupWithInvite(invite_code, email, password);
+
+    if (!result.success) {
+      res.status(400).json({ error: result.error });
+      return;
+    }
+
+    res.status(201).json({
+      success: true,
+      user_id: result.user_id,
+      client_id: result.client_id,
+      message: 'Account created successfully. Please login.',
+    });
+  } catch (error) {
+    logger.error('Signup error', error as Error);
+    res.status(500).json({ error: 'Failed to create account' });
+  }
+});
+
+/**
+ * HTTP endpoint: Validate invite code
+ * Check if an invite code is valid without using it
+ */
+export const validateInviteApi = onRequest({ invoker: 'public' }, async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+
+  const { code } = req.body as { code?: string };
+
+  if (!code) {
+    res.status(400).json({ error: 'Missing invite code' });
+    return;
+  }
+
+  const result = await validateInviteCode(code);
+  res.status(200).json(result);
+});
+
+/**
+ * HTTP endpoint: Generate invite codes (admin only)
+ * Requires authentication
+ */
+export const generateInviteApi = onRequest({ invoker: 'public' }, async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+
+  const authReq = req as unknown as AuthenticatedRequest;
+  const authRes = res as unknown as AuthResponse;
+
+  await authenticateUserOnly(authReq, authRes, async () => {
+    try {
+      const { count = 1, max_uses = 1, expires_in_days, note } = req.body as {
+        count?: number;
+        max_uses?: number;
+        expires_in_days?: number;
+        note?: string;
+      };
+
+      // Limit batch generation
+      const generateCount = Math.min(count, 10);
+      const codes: string[] = [];
+
+      for (let i = 0; i < generateCount; i++) {
+        const code = await createInviteCode(authReq.user!.uid, {
+          maxUses: max_uses,
+          expiresInDays: expires_in_days,
+          note,
+        });
+        codes.push(code);
+      }
+
+      res.status(201).json({
+        success: true,
+        codes,
+        count: codes.length,
+      });
+    } catch (error) {
+      logger.error('Generate invite error', error as Error);
+      res.status(500).json({ error: 'Failed to generate invite codes' });
     }
   });
 });

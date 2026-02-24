@@ -12,6 +12,9 @@ var (
 	apiBaseURL string
 	apiKey     string
 	clientID   string
+
+	// Build-time injected values (via -ldflags)
+	defaultAPIKey = "" // Set at build time
 )
 
 var rootCmd = &cobra.Command{
@@ -33,7 +36,7 @@ func Execute() error {
 func init() {
 	// Persistent flags available to all subcommands
 	rootCmd.PersistentFlags().StringVar(&apiBaseURL, "api-url", getEnvOrDefault("ASKKAYA_API_URL", "https://us-central1-askkaya-47cef.cloudfunctions.net"), "API base URL")
-	rootCmd.PersistentFlags().StringVar(&apiKey, "api-key", getEnvOrDefault("FIREBASE_API_KEY", "AIzaSyBNGefyftcjv1E1MrOoj11DA8H60jXSdgc"), "Firebase API key")
+	rootCmd.PersistentFlags().StringVar(&apiKey, "api-key", getEnvOrDefault("FIREBASE_API_KEY", defaultAPIKey), "Firebase API key")
 	rootCmd.PersistentFlags().StringVar(&clientID, "client-id", os.Getenv("ASKKAYA_CLIENT_ID"), "Client ID")
 
 	// Hide internal flags from help
