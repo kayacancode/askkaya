@@ -26,6 +26,19 @@ askkaya auth login -e your@email.com
 askkaya query "How do I backup my setup?"
 ```
 
+### Install AI Assistant Skill (Optional)
+
+Add AskKaya to Claude Code, OpenClaw, or Codex:
+
+```bash
+curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/install.sh | bash
+```
+
+Then use `/askkaya` in your AI assistant:
+```
+/askkaya How do I configure Honcho memory?
+```
+
 ## Architecture
 
 ```
