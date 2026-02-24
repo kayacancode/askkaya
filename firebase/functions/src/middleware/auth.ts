@@ -44,6 +44,57 @@ export interface AuthResponse {
 export type NextFunction = () => void;
 
 /**
+ * Authenticate user only (no client ID required)
+ * Use this for endpoints that need user identity but not client association
+ */
+export async function authenticateUserOnly(
+  req: AuthenticatedRequest,
+  res: AuthResponse,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Missing Authorization header',
+      });
+      return;
+    }
+
+    const parts = authHeader.split(' ');
+    if (parts.length !== 2 || parts[0] !== 'Bearer') {
+      res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Invalid Authorization header format',
+      });
+      return;
+    }
+
+    const token = parts[1]!;
+
+    try {
+      const decodedToken = await getAuth().verifyIdToken(token);
+      req.user = decodedToken;
+    } catch (error) {
+      res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Invalid or expired token',
+      });
+      return;
+    }
+
+    next();
+  } catch (error) {
+    logger.error('Auth middleware error', error as Error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: 'Authentication failed',
+    });
+  }
+}
+
+/**
  * Authenticate incoming requests
  * - Extract and verify Bearer token
  * - Check client billing status (hard cutoff)

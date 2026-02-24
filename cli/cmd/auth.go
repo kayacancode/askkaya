@@ -2,10 +2,13 @@ package cmd
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/askkaya/cli/internal/auth"
 	"github.com/spf13/cobra"
@@ -83,6 +86,17 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("login failed: %w", err)
 	}
 
+	// Fetch user info (including client ID) from backend
+	fmt.Println("Fetching account info...")
+	userInfo, err := fetchUserInfo(tokens.IDToken)
+	if err != nil {
+		fmt.Printf("Warning: Could not fetch account info: %v\n", err)
+	} else {
+		tokens.ClientID = userInfo.ClientID
+		tokens.UserID = userInfo.UserID
+		tokens.Email = userInfo.Email
+	}
+
 	// Store tokens in keychain
 	keychain := auth.NewKeychain(keychainService)
 	if err := keychain.StoreTokens(*tokens); err != nil {
@@ -90,7 +104,45 @@ func runLogin(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Println("Successfully logged in!")
+	if tokens.ClientID != "" {
+		fmt.Printf("Client: %s\n", userInfo.ClientName)
+	}
 	return nil
+}
+
+type userInfoResponse struct {
+	UserID     string `json:"user_id"`
+	Email      string `json:"email"`
+	ClientID   string `json:"client_id"`
+	ClientName string `json:"client_name"`
+}
+
+func fetchUserInfo(idToken string) (*userInfoResponse, error) {
+	url := apiBaseURL + "/meApi"
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+idToken)
+
+	httpClient := &http.Client{Timeout: 10 * time.Second}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("server returned status %d", resp.StatusCode)
+	}
+
+	var info userInfoResponse
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return nil, err
+	}
+
+	return &info, nil
 }
 
 func runLogout(cmd *cobra.Command, args []string) error {

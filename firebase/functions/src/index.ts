@@ -13,7 +13,7 @@ import * as logger from './utils/logger';
 
 // API imports
 import { processQuery, healthCheck } from './api/query';
-import { authenticateRequest, type AuthenticatedRequest, type AuthResponse } from './middleware/auth';
+import { authenticateRequest, authenticateUserOnly, type AuthenticatedRequest, type AuthResponse } from './middleware/auth';
 import { handleStripeWebhook } from './billing/stripe';
 import { verifyWebhookSignature, parseGitHubPush, type GitHubPushPayload } from './processing/webhook';
 import { generateEmbedding } from './services/embeddings';
@@ -201,6 +201,111 @@ export const queryApi = onRequest({ invoker: 'public' }, async (req, res) => {
 
       logger.error('Query API error', err, { durationMs });
       logger.logRequestComplete(req.method, req.path, 500, durationMs);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+});
+
+/**
+ * HTTP endpoint: Get current user info
+ * Returns the authenticated user's profile including their client ID
+ */
+export const meApi = onRequest({ invoker: 'public' }, async (req, res) => {
+  // Set CORS headers
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  if (req.method !== 'GET') {
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+
+  // Authenticate the request (user only, no client ID required)
+  const authReq = req as unknown as AuthenticatedRequest;
+  const authRes = res as unknown as AuthResponse;
+
+  await authenticateUserOnly(authReq, authRes, async () => {
+    try {
+      const user = authReq.user;
+      if (!user) {
+        res.status(401).json({ error: 'Not authenticated' });
+        return;
+      }
+
+      const db = getDb();
+
+      // Look up user's client association
+      // First check if user has a direct client mapping
+      const userDoc = await db.collection('users').doc(user.uid).get();
+      let clientId: string | null = null;
+      let clientName: string | null = null;
+
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        clientId = userData?.client_id || null;
+      }
+
+      // If no direct mapping, check if user's email is associated with a client
+      if (!clientId && user.email) {
+        const clientQuery = await db.collection('clients')
+          .where('email', '==', user.email)
+          .limit(1)
+          .get();
+
+        if (!clientQuery.empty) {
+          const clientDoc = clientQuery.docs[0];
+          clientId = clientDoc.id;
+          clientName = clientDoc.data().name || null;
+
+          // Store the mapping for future lookups
+          await db.collection('users').doc(user.uid).set({
+            client_id: clientId,
+            email: user.email,
+            created_at: admin.firestore.FieldValue.serverTimestamp(),
+          }, { merge: true });
+        }
+      }
+
+      // If still no client, create a default personal client for the user
+      if (!clientId) {
+        const newClientRef = await db.collection('clients').add({
+          name: user.email?.split('@')[0] || 'Personal',
+          email: user.email,
+          billing_status: 'active',
+          setup_context: ['general'],
+          created_at: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        clientId = newClientRef.id;
+        clientName = user.email?.split('@')[0] || 'Personal';
+
+        // Store the mapping
+        await db.collection('users').doc(user.uid).set({
+          client_id: clientId,
+          email: user.email,
+          created_at: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+      }
+
+      // Get client name if we don't have it yet
+      if (!clientName && clientId) {
+        const clientDoc = await db.collection('clients').doc(clientId).get();
+        clientName = clientDoc.data()?.name || null;
+      }
+
+      res.status(200).json({
+        user_id: user.uid,
+        email: user.email,
+        client_id: clientId,
+        client_name: clientName,
+      });
+    } catch (error) {
+      logger.error('meApi error', error as Error);
       res.status(500).json({ error: 'Internal server error' });
     }
   });

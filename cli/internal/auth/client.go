@@ -16,6 +16,9 @@ type AuthTokens struct {
 	RefreshToken string
 	ExpiresIn    int
 	ExpiresAt    time.Time
+	ClientID     string // User's associated client ID
+	UserID       string // Firebase user ID
+	Email        string // User's email
 }
 
 // AuthClient is a Firebase Auth REST client
