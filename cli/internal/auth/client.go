@@ -19,6 +19,7 @@ type AuthTokens struct {
 	ClientID     string // User's associated client ID
 	UserID       string // Firebase user ID
 	Email        string // User's email
+	Role         string // User's role: "admin" or "client"
 }
 
 // AuthClient is a Firebase Auth REST client

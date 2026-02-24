@@ -86,7 +86,7 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("login failed: %w", err)
 	}
 
-	// Fetch user info (including client ID) from backend
+	// Fetch user info (including client ID and role) from backend
 	fmt.Println("Fetching account info...")
 	userInfo, err := fetchUserInfo(tokens.IDToken)
 	if err != nil {
@@ -95,6 +95,10 @@ func runLogin(cmd *cobra.Command, args []string) error {
 		tokens.ClientID = userInfo.ClientID
 		tokens.UserID = userInfo.UserID
 		tokens.Email = userInfo.Email
+		tokens.Role = userInfo.Role
+		if tokens.Role == "" {
+			tokens.Role = "client" // Default to client if not specified
+		}
 	}
 
 	// Store tokens in keychain
@@ -115,6 +119,7 @@ type userInfoResponse struct {
 	Email      string `json:"email"`
 	ClientID   string `json:"client_id"`
 	ClientName string `json:"client_name"`
+	Role       string `json:"role"` // "admin" or "client"
 }
 
 func fetchUserInfo(idToken string) (*userInfoResponse, error) {

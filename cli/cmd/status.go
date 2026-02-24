@@ -32,6 +32,12 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Println("Authentication: Logged in")
+	if tokens.Email != "" {
+		fmt.Printf("  Email: %s\n", tokens.Email)
+	}
+	if tokens.Role != "" {
+		fmt.Printf("  Role: %s\n", tokens.Role)
+	}
 
 	// Check token expiry
 	if time.Now().After(tokens.ExpiresAt) {

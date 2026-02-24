@@ -304,11 +304,17 @@ export const meApi = onRequest({ invoker: 'public' }, async (req, res) => {
         clientName = clientDoc.data()?.name || null;
       }
 
+      // Determine user role
+      const userData = userDoc.exists ? userDoc.data() : null;
+      const isAdmin = userData?.is_admin === true;
+      const role = isAdmin ? 'admin' : 'client';
+
       res.status(200).json({
         user_id: user.uid,
         email: user.email,
         client_id: clientId,
         client_name: clientName,
+        role: role,
       });
     } catch (error) {
       logger.error('meApi error', error as Error);

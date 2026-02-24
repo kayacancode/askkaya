@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/askkaya/cli/internal/auth"
 	"github.com/spf13/cobra"
 )
 
@@ -44,11 +45,29 @@ func init() {
 	rootCmd.PersistentFlags().MarkHidden("api-url")
 	rootCmd.PersistentFlags().MarkHidden("client-id")
 
-	// Add subcommands
+	// Add subcommands (visible to everyone)
 	rootCmd.AddCommand(authCmd)
 	rootCmd.AddCommand(queryCmd)
 	rootCmd.AddCommand(statusCmd)
+
+	// Admin-only commands - check role and conditionally hide
 	rootCmd.AddCommand(heartbeatCmd)
+	rootCmd.AddCommand(inviteCmd)
+
+	// Hide admin commands if user is not an admin
+	hideAdminCommandsIfNotAdmin()
+}
+
+// hideAdminCommandsIfNotAdmin checks the stored role and hides admin commands for non-admins
+func hideAdminCommandsIfNotAdmin() {
+	keychain := auth.NewKeychain("askkaya")
+	tokens, err := keychain.LoadTokens()
+
+	// If not logged in or role is not admin, hide admin commands
+	if err != nil || tokens.Role != "admin" {
+		heartbeatCmd.Hidden = true
+		inviteCmd.Hidden = true
+	}
 }
 
 func getEnvOrDefault(key, defaultValue string) string {

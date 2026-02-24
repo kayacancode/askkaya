@@ -44,7 +44,7 @@ func init() {
 	inviteGenerateCmd.Flags().StringVar(&inviteNote, "note", "", "Note for the invite codes")
 
 	inviteCmd.AddCommand(inviteGenerateCmd)
-	rootCmd.AddCommand(inviteCmd)
+	// Note: inviteCmd is added to rootCmd in root.go (admin-only)
 }
 
 func runInviteGenerate(cmd *cobra.Command, args []string) error {
