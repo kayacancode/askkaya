@@ -13,22 +13,22 @@ curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/insta
 ### Claude Code
 
 ```bash
-mkdir -p ~/.claude/skills
-curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/askkaya.md -o ~/.claude/skills/askkaya.md
+mkdir -p ~/.claude/skills/askkaya
+curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/askkaya.md -o ~/.claude/skills/askkaya/SKILL.md
 ```
 
 ### OpenClaw
 
 ```bash
-mkdir -p ~/.openclaw/skills
-curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/askkaya.md -o ~/.openclaw/skills/askkaya.md
+mkdir -p ~/.openclaw/skills/askkaya
+curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/askkaya.md -o ~/.openclaw/skills/askkaya/SKILL.md
 ```
 
 ### Codex
 
 ```bash
-mkdir -p ~/.codex/skills
-curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/askkaya.md -o ~/.codex/skills/askkaya.md
+mkdir -p ~/.codex/skills/askkaya
+curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/askkaya.md -o ~/.codex/skills/askkaya/SKILL.md
 ```
 
 ## Prerequisites

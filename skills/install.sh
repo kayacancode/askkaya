@@ -27,28 +27,28 @@ if [ -d "$HOME/.codex" ]; then
     CODEX=true
 fi
 
-# Install for Claude Code
+# Install for Claude Code (uses directory/SKILL.md structure)
 if [ "$CLAUDE_CODE" = true ]; then
     echo "Installing for Claude Code..."
-    mkdir -p "$HOME/.claude/skills"
-    curl -sL "$SKILL_URL" -o "$HOME/.claude/skills/askkaya.md"
-    echo "  Installed to ~/.claude/skills/askkaya.md"
+    mkdir -p "$HOME/.claude/skills/askkaya"
+    curl -sL "$SKILL_URL" -o "$HOME/.claude/skills/askkaya/SKILL.md"
+    echo "  Installed to ~/.claude/skills/askkaya/SKILL.md"
 fi
 
-# Install for OpenClaw
+# Install for OpenClaw (uses directory/SKILL.md structure)
 if [ "$OPENCLAW" = true ]; then
     echo "Installing for OpenClaw..."
-    mkdir -p "$HOME/.openclaw/skills"
-    curl -sL "$SKILL_URL" -o "$HOME/.openclaw/skills/askkaya.md"
-    echo "  Installed to ~/.openclaw/skills/askkaya.md"
+    mkdir -p "$HOME/.openclaw/skills/askkaya"
+    curl -sL "$SKILL_URL" -o "$HOME/.openclaw/skills/askkaya/SKILL.md"
+    echo "  Installed to ~/.openclaw/skills/askkaya/SKILL.md"
 fi
 
-# Install for Codex
+# Install for Codex (uses directory/SKILL.md structure)
 if [ "$CODEX" = true ]; then
     echo "Installing for Codex..."
-    mkdir -p "$HOME/.codex/skills"
-    curl -sL "$SKILL_URL" -o "$HOME/.codex/skills/askkaya.md"
-    echo "  Installed to ~/.codex/skills/askkaya.md"
+    mkdir -p "$HOME/.codex/skills/askkaya"
+    curl -sL "$SKILL_URL" -o "$HOME/.codex/skills/askkaya/SKILL.md"
+    echo "  Installed to ~/.codex/skills/askkaya/SKILL.md"
 fi
 
 # If none detected, offer manual install
@@ -56,9 +56,9 @@ if [ "$CLAUDE_CODE" = false ] && [ "$OPENCLAW" = false ] && [ "$CODEX" = false ]
     echo "No supported tools detected."
     echo ""
     echo "Manual installation:"
-    echo "  Claude Code: mkdir -p ~/.claude/skills && curl -sL $SKILL_URL -o ~/.claude/skills/askkaya.md"
-    echo "  OpenClaw:    mkdir -p ~/.openclaw/skills && curl -sL $SKILL_URL -o ~/.openclaw/skills/askkaya.md"
-    echo "  Codex:       mkdir -p ~/.codex/skills && curl -sL $SKILL_URL -o ~/.codex/skills/askkaya.md"
+    echo "  Claude Code: mkdir -p ~/.claude/skills/askkaya && curl -sL $SKILL_URL -o ~/.claude/skills/askkaya/SKILL.md"
+    echo "  OpenClaw:    mkdir -p ~/.openclaw/skills/askkaya && curl -sL $SKILL_URL -o ~/.openclaw/skills/askkaya/SKILL.md"
+    echo "  Codex:       mkdir -p ~/.codex/skills/askkaya && curl -sL $SKILL_URL -o ~/.codex/skills/askkaya/SKILL.md"
     exit 0
 fi
 
