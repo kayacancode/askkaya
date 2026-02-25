@@ -122,7 +122,7 @@ async function handleSubscriptionDeleted(event: Stripe.Event): Promise<void> {
 
 /**
  * Update client billing status by Stripe customer ID
- * 
+ *
  * @param stripeCustomerId - Stripe customer ID
  * @param status - New billing status
  */
@@ -155,5 +155,151 @@ async function updateClientBillingStatus(
   } catch (error) {
     console.error('Failed to update billing status:', error);
     throw error;
+  }
+}
+
+/**
+ * Link an existing client to an existing Stripe customer
+ * Also syncs the current subscription status from Stripe
+ */
+export async function linkClientToStripe(
+  clientId: string,
+  stripeCustomerId: string
+): Promise<{ success: boolean; billing_status: string; error?: string }> {
+  const db = getDb();
+  const stripe = getStripe();
+
+  // Verify client exists
+  const clientDoc = await db.collection('clients').doc(clientId).get();
+  if (!clientDoc.exists) {
+    return { success: false, billing_status: '', error: 'Client not found' };
+  }
+
+  // Verify Stripe customer exists and get subscription status
+  let billingStatus = 'active';
+  try {
+    const customer = await stripe.customers.retrieve(stripeCustomerId);
+    if ((customer as Stripe.DeletedCustomer).deleted) {
+      return { success: false, billing_status: '', error: 'Stripe customer has been deleted' };
+    }
+
+    // Check subscription status
+    const subscriptions = await stripe.subscriptions.list({
+      customer: stripeCustomerId,
+      status: 'all',
+      limit: 1,
+    });
+
+    if (subscriptions.data.length > 0) {
+      const sub = subscriptions.data[0];
+      if (sub.status === 'active' || sub.status === 'trialing') {
+        billingStatus = 'active';
+      } else if (sub.status === 'past_due' || sub.status === 'unpaid') {
+        billingStatus = 'suspended';
+      } else if (sub.status === 'canceled') {
+        billingStatus = 'cancelled';
+      }
+    }
+  } catch (error) {
+    console.error('Stripe customer lookup failed:', error);
+    return { success: false, billing_status: '', error: 'Invalid Stripe customer ID' };
+  }
+
+  // Update client with Stripe customer ID and billing status
+  await db.collection('clients').doc(clientId).update({
+    stripe_customer_id: stripeCustomerId,
+    billing_status: billingStatus,
+    stripe_linked_at: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  console.log(`Linked client ${clientId} to Stripe customer ${stripeCustomerId}`);
+  return { success: true, billing_status: billingStatus };
+}
+
+/**
+ * Create a Stripe Checkout session for a new client subscription
+ */
+export async function createPaymentLink(
+  clientId: string,
+  clientEmail: string,
+  clientName: string,
+  priceId: string,
+  successUrl: string,
+  cancelUrl: string
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  const db = getDb();
+  const stripe = getStripe();
+
+  // Verify client exists
+  const clientDoc = await db.collection('clients').doc(clientId).get();
+  if (!clientDoc.exists) {
+    return { success: false, error: 'Client not found' };
+  }
+
+  const clientData = clientDoc.data();
+
+  // Check if client already has a Stripe customer
+  let stripeCustomerId = clientData?.stripe_customer_id;
+
+  if (!stripeCustomerId) {
+    // Create new Stripe customer
+    const customer = await stripe.customers.create({
+      email: clientEmail,
+      name: clientName,
+      metadata: {
+        askkaya_client_id: clientId,
+      },
+    });
+    stripeCustomerId = customer.id;
+
+    // Save Stripe customer ID to client record
+    await db.collection('clients').doc(clientId).update({
+      stripe_customer_id: stripeCustomerId,
+    });
+  }
+
+  // Create checkout session
+  const session = await stripe.checkout.sessions.create({
+    customer: stripeCustomerId,
+    mode: 'subscription',
+    line_items: [
+      {
+        price: priceId,
+        quantity: 1,
+      },
+    ],
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    metadata: {
+      askkaya_client_id: clientId,
+    },
+  });
+
+  return { success: true, url: session.url || undefined };
+}
+
+/**
+ * Get or create a reusable payment link for a price
+ */
+export async function getOrCreatePaymentLink(
+  priceId: string
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  const stripe = getStripe();
+
+  try {
+    // Create a payment link
+    const paymentLink = await stripe.paymentLinks.create({
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+    });
+
+    return { success: true, url: paymentLink.url };
+  } catch (error) {
+    console.error('Failed to create payment link:', error);
+    return { success: false, error: (error as Error).message };
   }
 }

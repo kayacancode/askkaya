@@ -14,7 +14,7 @@ import * as logger from './utils/logger';
 // API imports
 import { processQuery, healthCheck } from './api/query';
 import { authenticateRequest, authenticateUserOnly, type AuthenticatedRequest, type AuthResponse } from './middleware/auth';
-import { handleStripeWebhook } from './billing/stripe';
+import { handleStripeWebhook, linkClientToStripe, createPaymentLink } from './billing/stripe';
 import { verifyWebhookSignature, parseGitHubPush, type GitHubPushPayload } from './processing/webhook';
 import { generateEmbedding } from './services/embeddings';
 import {
@@ -461,6 +461,130 @@ export const generateInviteApi = onRequest({ invoker: 'public' }, async (req, re
       res.status(500).json({ error: 'Failed to generate invite codes' });
     }
   });
+});
+
+/**
+ * HTTP endpoint: Link client to Stripe customer (admin only)
+ *
+ * POST /linkStripeApi
+ * Body: { client_id: string, stripe_customer_id: string }
+ */
+export const linkStripeApi = onRequest({ invoker: 'public' }, async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  logger.logRequest(req.method, req.path);
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+
+  // Authenticate (admin only)
+  await authenticateUserOnly(
+    req as AuthenticatedRequest,
+    res as unknown as AuthResponse,
+    async () => {
+      try {
+        const { client_id, stripe_customer_id } = req.body;
+
+        if (!client_id || !stripe_customer_id) {
+          res.status(400).json({ error: 'client_id and stripe_customer_id are required' });
+          return;
+        }
+
+        const result = await linkClientToStripe(client_id, stripe_customer_id);
+
+        if (!result.success) {
+          res.status(400).json({ success: false, error: result.error });
+          return;
+        }
+
+        res.status(200).json(result);
+      } catch (error) {
+        logger.error('Link Stripe error', error as Error);
+        res.status(500).json({ error: 'Failed to link client to Stripe' });
+      }
+    }
+  );
+});
+
+/**
+ * HTTP endpoint: Create Stripe payment link for a client
+ *
+ * POST /createPaymentLinkApi
+ * Body: { client_id: string, price_id: string, success_url?: string, cancel_url?: string }
+ */
+export const createPaymentLinkApi = onRequest({ invoker: 'public' }, async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  logger.logRequest(req.method, req.path);
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+
+  // Authenticate (admin only)
+  await authenticateUserOnly(
+    req as AuthenticatedRequest,
+    res as unknown as AuthResponse,
+    async () => {
+      try {
+        const {
+          client_id,
+          price_id,
+          success_url = 'https://askkaya.com/success',
+          cancel_url = 'https://askkaya.com/cancel',
+        } = req.body;
+
+        if (!client_id || !price_id) {
+          res.status(400).json({ error: 'client_id and price_id are required' });
+          return;
+        }
+
+        // Get client details
+        const clientDoc = await getDb().collection('clients').doc(client_id).get();
+        if (!clientDoc.exists) {
+          res.status(404).json({ error: 'Client not found' });
+          return;
+        }
+
+        const clientData = clientDoc.data()!;
+        const result = await createPaymentLink(
+          client_id,
+          clientData.email || '',
+          clientData.name || '',
+          price_id,
+          success_url,
+          cancel_url
+        );
+
+        if (!result.success) {
+          res.status(400).json({ success: false, error: result.error });
+          return;
+        }
+
+        res.status(200).json(result);
+      } catch (error) {
+        logger.error('Create payment link error', error as Error);
+        res.status(500).json({ error: 'Failed to create payment link' });
+      }
+    }
+  );
 });
 
 /**
