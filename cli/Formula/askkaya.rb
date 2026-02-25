@@ -6,20 +6,20 @@ class Askkaya < Formula
   on_macos do
     if Hardware::CPU.arm?
       url "https://github.com/kayacancode/askkaya/releases/download/v0.2.0/askkaya-darwin-arm64"
-      sha256 "af02caece6700884e6f5d77aba79a20d1eec2f49dffc85a29ee15ad70ffb46c2"
+      sha256 "9373ce6d2cecf03921c883fce6ebdcf91bab9729c71c9948e154ecf74ad0c02e"
     else
       url "https://github.com/kayacancode/askkaya/releases/download/v0.2.0/askkaya-darwin-amd64"
-      sha256 "522d29066d7a3d85bb3e26f0439cf37cd5ecb7e3ef1ff89c8bf007dac1ecdf78"
+      sha256 "9fa21033c5b2150aba338739d293800b0afeb84cb028e69de501087413cea5f1"
     end
   end
 
   on_linux do
     if Hardware::CPU.arm?
       url "https://github.com/kayacancode/askkaya/releases/download/v0.2.0/askkaya-linux-arm64"
-      sha256 "aa1256b46cc392f12c036ebf177af7e3edb60e0dc7ab6fa405657e559a71a511"
+      sha256 "c72f071c3de353ec225fe3efb4689dfb79bed69321b6aaead27a06e4f4a0c7bf"
     else
       url "https://github.com/kayacancode/askkaya/releases/download/v0.2.0/askkaya-linux-amd64"
-      sha256 "73f4437b8a7c484f9fd09e60eabb23bcb9442553e4a93bb7a933b67f4ab4bb4e"
+      sha256 "36e1ed278c5c4898ffb165fcfc7d9201523c107f09a4bb86a43c404b5e931896"
     end
   end
 
