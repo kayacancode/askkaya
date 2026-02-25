@@ -163,7 +163,8 @@ export function formatRetrievedContext(results: RAGResult[]): string {
 
 /**
  * Extract source references from RAG results
+ * Returns article titles for user-friendly display
  */
 export function extractSources(results: RAGResult[]): string[] {
-  return results.map(r => r.article.id);
+  return results.map(r => r.article.title || r.article.id);
 }
