@@ -18,6 +18,12 @@ type QueryResponse struct {
 	Escalated  bool     `json:"escalated"`
 }
 
+// ImageInput represents an image to include with a query
+type ImageInput struct {
+	Data      string `json:"data"`      // base64 encoded image data
+	MediaType string `json:"mediaType"` // image/jpeg, image/png, image/gif, image/webp
+}
+
 // APIClient is a Firebase Functions HTTP client
 type APIClient struct {
 	BaseURL      string
@@ -56,10 +62,15 @@ func (c *APIClient) GetTimeout() time.Duration {
 
 // Query sends a query to the API
 func (c *APIClient) Query(question string) (QueryResponse, error) {
+	return c.QueryWithImage(question, nil)
+}
+
+// QueryWithImage sends a query with an optional image to the API
+func (c *APIClient) QueryWithImage(question string, image *ImageInput) (QueryResponse, error) {
 	var response QueryResponse
 
 	// Try the request with current token
-	err := c.doQuery(question, &response)
+	err := c.doQuery(question, image, &response)
 	if err != nil {
 		// Check if it's a 401 error and we have a refresh function
 		if strings.Contains(err.Error(), "unauthorized") && c.refreshFunc != nil {
@@ -73,7 +84,7 @@ func (c *APIClient) Query(question string) (QueryResponse, error) {
 			c.token = newToken
 
 			// Retry the request
-			err = c.doQuery(question, &response)
+			err = c.doQuery(question, image, &response)
 			if err != nil {
 				return response, err
 			}
@@ -86,11 +97,19 @@ func (c *APIClient) Query(question string) (QueryResponse, error) {
 }
 
 // doQuery performs the actual query request
-func (c *APIClient) doQuery(question string, response *QueryResponse) error {
+func (c *APIClient) doQuery(question string, image *ImageInput, response *QueryResponse) error {
 	url := fmt.Sprintf("%s/queryApi", c.BaseURL)
 
 	reqBody := map[string]interface{}{
 		"question": question,
+	}
+
+	// Include image if provided
+	if image != nil {
+		reqBody["image"] = map[string]string{
+			"data":      image.Data,
+			"mediaType": image.MediaType,
+		}
 	}
 
 	bodyBytes, err := json.Marshal(reqBody)

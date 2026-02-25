@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/askkaya/cli/internal/api"
@@ -14,6 +16,7 @@ import (
 
 var (
 	interactive bool
+	imagePath   string
 )
 
 var queryCmd = &cobra.Command{
@@ -24,14 +27,18 @@ var queryCmd = &cobra.Command{
 The system uses AI-powered retrieval to find relevant information
 from your organization's documentation and provide helpful answers.
 
+You can include a screenshot to help diagnose issues (error messages, etc.)
+
 Examples:
   askkaya query "How do I reset my password?"
+  askkaya query "What's this error?" --image ./screenshot.png
   askkaya query -i  # Interactive mode`,
 	RunE: runQuery,
 }
 
 func init() {
 	queryCmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "Launch interactive TUI mode")
+	queryCmd.Flags().StringVar(&imagePath, "image", "", "Path to image file (screenshot, error message, etc.)")
 }
 
 func runQuery(cmd *cobra.Command, args []string) error {
@@ -76,7 +83,21 @@ func runQuery(cmd *cobra.Command, args []string) error {
 
 	question := strings.Join(args, " ")
 
-	response, err := apiClient.Query(question)
+	// Load image if provided
+	var image *api.ImageInput
+	if imagePath != "" {
+		imageData, mediaType, err := loadImage(imagePath)
+		if err != nil {
+			return fmt.Errorf("failed to load image: %w", err)
+		}
+		image = &api.ImageInput{
+			Data:      imageData,
+			MediaType: mediaType,
+		}
+		fmt.Println("📷 Including screenshot in query...")
+	}
+
+	response, err := apiClient.QueryWithImage(question, image)
 	if err != nil {
 		errStr := err.Error()
 		if strings.Contains(errStr, "billing_pending") || strings.Contains(errStr, "Payment required") {
@@ -132,4 +153,34 @@ func (w *apiClientWrapper) Query(question string) (api.QueryResponse, error) {
 
 func (w *apiClientWrapper) HealthCheck() error {
 	return w.client.HealthCheck()
+}
+
+// loadImage reads an image file and returns base64-encoded data and media type
+func loadImage(path string) (string, string, error) {
+	// Read the file
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to read file: %w", err)
+	}
+
+	// Determine media type from extension
+	ext := strings.ToLower(filepath.Ext(path))
+	var mediaType string
+	switch ext {
+	case ".jpg", ".jpeg":
+		mediaType = "image/jpeg"
+	case ".png":
+		mediaType = "image/png"
+	case ".gif":
+		mediaType = "image/gif"
+	case ".webp":
+		mediaType = "image/webp"
+	default:
+		return "", "", fmt.Errorf("unsupported image format: %s (supported: jpg, png, gif, webp)", ext)
+	}
+
+	// Base64 encode
+	encoded := base64.StdEncoding.EncodeToString(data)
+
+	return encoded, mediaType, nil
 }

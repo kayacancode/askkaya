@@ -6,11 +6,15 @@
 
 import * as admin from 'firebase-admin';
 import { retrieveRelevantArticles, formatRetrievedContext, extractSources } from '../services/rag';
-import { generateResponse } from '../services/generation';
+import { generateResponse, type ImageInput } from '../services/generation';
 import * as logger from '../utils/logger';
 
 export interface QueryRequest {
   question: string;
+  image?: {
+    data: string;  // base64 encoded
+    mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+  };
 }
 
 export interface QueryResponse {
@@ -78,11 +82,13 @@ async function checkRateLimit(clientId: string): Promise<boolean> {
  * @param clientId - Client ID for access control
  * @param question - User's question
  * @param userId - Optional user ID for personal KB access
+ * @param image - Optional image for vision queries (screenshots, error messages, etc.)
  */
 export async function processQuery(
   clientId: string,
   question: string,
-  userId?: string
+  userId?: string,
+  image?: ImageInput
 ): Promise<QueryResponse> {
   const startTime = Date.now();
   const db = admin.firestore();
@@ -138,8 +144,8 @@ export async function processQuery(
     // Step 2: Format context for LLM
     const context = formatRetrievedContext(ragResults);
     
-    // Step 3: Generate response with LLM
-    const generation = await generateResponse(question, context, clientName);
+    // Step 3: Generate response with LLM (with optional image for vision)
+    const generation = await generateResponse(question, context, clientName, image);
     
     logger.debug('Response generated', {
       clientId,

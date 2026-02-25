@@ -32,20 +32,27 @@ export interface GenerationResult {
   reasoning: string;
 }
 
+export interface ImageInput {
+  data: string;  // base64 encoded image data
+  mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+}
+
 /**
  * Generate response using LLM with retrieved context
- * 
+ *
  * @param query - User's question
  * @param context - Retrieved context from RAG
  * @param clientName - Client name for personalization
+ * @param image - Optional image input for vision queries
  * @returns Generated response with confidence score
  */
 export async function generateResponse(
   query: string,
   context: string,
-  clientName: string
+  clientName: string,
+  image?: ImageInput
 ): Promise<GenerationResult> {
-  const systemPrompt = `You are a helpful customer support assistant for ${clientName}. 
+  const systemPrompt = `You are a helpful customer support assistant for ${clientName}.
 Your job is to answer questions based on the provided knowledge base context.
 
 IMPORTANT RULES:
@@ -53,7 +60,8 @@ IMPORTANT RULES:
 2. If the context doesn't contain relevant information, say so clearly
 3. Never share personal information (emails, phone numbers, addresses)
 4. Be concise and professional
-5. After your answer, provide a confidence score (0-100) based on:
+5. If an image is provided, analyze it carefully to understand the user's question context (error messages, screenshots, etc.)
+6. After your answer, provide a confidence score (0-100) based on:
    - How well the context matches the question
    - How complete your answer is
    - How certain you are about the information
@@ -70,6 +78,24 @@ Question: ${query}
 
 Please provide your answer, confidence score, and reasoning.`;
 
+  // Build message content - text only or text + image
+  const messageContent: Anthropic.MessageParam['content'] = image
+    ? [
+        {
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: image.mediaType,
+            data: image.data,
+          },
+        },
+        {
+          type: 'text',
+          text: userPrompt,
+        },
+      ]
+    : userPrompt;
+
   try {
     const response = await getAnthropic().messages.create({
       model: MODEL,
@@ -78,7 +104,7 @@ Please provide your answer, confidence score, and reasoning.`;
       messages: [
         {
           role: 'user',
-          content: userPrompt,
+          content: messageContent,
         },
       ],
     });

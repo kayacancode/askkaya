@@ -91,11 +91,13 @@ export function createMcpServer(userContext: UserContext): McpServer {
   // Tool: Query the AskKaya knowledge base
   server.tool(
     'query',
-    'Query the AskKaya knowledge base for help with OpenClaw, Honcho, and other supported tools. Use this for setup help, configuration questions, and troubleshooting.',
+    'Query the AskKaya knowledge base for help with OpenClaw, Honcho, and other supported tools. Use this for setup help, configuration questions, and troubleshooting. You can optionally include a screenshot to help diagnose issues.',
     {
       question: z.string().describe('The question to ask the knowledge base'),
+      image_data: z.string().optional().describe('Base64-encoded image data (for screenshots, error messages, etc.)'),
+      image_type: z.enum(['image/jpeg', 'image/png', 'image/gif', 'image/webp']).optional().describe('MIME type of the image'),
     },
-    async ({ question }) => {
+    async ({ question, image_data, image_type }) => {
       logger.info('MCP query tool invoked', {
         clientId: userContext.clientId,
         questionLength: question.length,
@@ -125,10 +127,16 @@ export function createMcpServer(userContext: UserContext): McpServer {
       }
 
       try {
+        // Build image input if provided
+        const image = image_data && image_type
+          ? { data: image_data, mediaType: image_type }
+          : undefined;
+
         const response = await processQuery(
           userContext.clientId,
           question,
-          userContext.userId
+          userContext.userId,
+          image
         );
 
         let resultText = response.text;

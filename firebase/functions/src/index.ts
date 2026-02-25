@@ -171,7 +171,10 @@ export const queryApi = onRequest({ invoker: 'public' }, async (req, res) => {
 
   await authenticateRequest(authReq, authRes, async () => {
     try {
-      const { question } = req.body as { question?: string };
+      const { question, image } = req.body as {
+        question?: string;
+        image?: { data: string; mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' };
+      };
       const clientId = req.headers['x-client-id'] as string;
       // Get userId from authenticated user for personal KB access
       const userId = authReq.user?.uid;
@@ -181,7 +184,20 @@ export const queryApi = onRequest({ invoker: 'public' }, async (req, res) => {
         return;
       }
 
-      const response = await processQuery(clientId, question, userId);
+      // Validate image if provided
+      if (image) {
+        if (!image.data || !image.mediaType) {
+          res.status(400).json({ error: 'Image must include data (base64) and mediaType' });
+          return;
+        }
+        const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!validTypes.includes(image.mediaType)) {
+          res.status(400).json({ error: 'Invalid image mediaType. Supported: jpeg, png, gif, webp' });
+          return;
+        }
+      }
+
+      const response = await processQuery(clientId, question, userId, image);
 
       const durationMs = Date.now() - startTime;
       logger.logRequestComplete(req.method, req.path, 200, durationMs, {
