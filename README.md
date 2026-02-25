@@ -151,10 +151,10 @@ cd web && vercel --prod
 ## CLI Commands
 
 ```bash
+askkaya                # Launch interactive TUI
 askkaya auth login     # Authenticate
 askkaya auth logout    # Clear credentials
-askkaya query "..."    # Ask a question
-askkaya query -i       # Interactive TUI mode
+askkaya query "..."    # Ask a question (one-shot)
 askkaya status         # Check connection
 askkaya heartbeat      # Start background daemon
 ```
