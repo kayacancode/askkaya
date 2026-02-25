@@ -26,9 +26,32 @@ askkaya auth login -e your@email.com
 askkaya query "How do I backup my setup?"
 ```
 
-### Install AI Assistant Skill (Optional)
+### Connect Your AI Agent (Recommended)
 
-Add AskKaya directly to your AI coding assistant (Claude Code, OpenClaw, or Codex):
+Add AskKaya as an MCP server so your AI agent can automatically query the knowledge base:
+
+**Claude Code:**
+```bash
+claude mcp add askkaya --transport http https://us-central1-askkaya-47cef.cloudfunctions.net/mcpServer
+```
+
+**OpenClaw / Other MCP Clients:**
+```json
+{
+  "mcpServers": {
+    "askkaya": {
+      "transport": "http",
+      "url": "https://us-central1-askkaya-47cef.cloudfunctions.net/mcpServer"
+    }
+  }
+}
+```
+
+Once connected, your AI agent can seamlessly answer questions from the AskKaya knowledge base without you needing to type any commands.
+
+### Install AI Assistant Skill (Alternative)
+
+If you prefer explicit commands, add AskKaya as a skill:
 
 **Quick Install:**
 ```bash
@@ -45,8 +68,6 @@ curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/askka
 After installing, use `/askkaya` in your AI assistant:
 ```
 /askkaya How do I configure Honcho memory?
-/askkaya What are OpenClaw's configuration options?
-/askkaya How do I set up webhooks?
 ```
 
 The skill calls the CLI under the hood, so make sure you're logged in first.
@@ -59,7 +80,10 @@ The skill calls the CLI under the hood, so make sure you're logged in first.
 │  (Go/TUI)   │     │    Functions     │     │     DB      │
 └─────────────┘     └──────────────────┘     └─────────────┘
                             │
-                    ┌───────┴───────┐
+┌─────────────┐             │
+│ MCP Server  │─────────────┤
+│ (AI Agents) │             │
+└─────────────┘     ┌───────┴───────┐
                     ▼               ▼
               ┌──────────┐   ┌──────────┐
               │  Claude  │   │ OpenAI   │
@@ -80,6 +104,7 @@ The skill calls the CLI under the hood, so make sure you're logged in first.
 | Component | Tech | Description |
 |-----------|------|-------------|
 | CLI | Go, Cobra, Bubble Tea | Terminal client with TUI mode |
+| MCP Server | TypeScript, MCP SDK | AI agent integration (Claude Code, OpenClaw) |
 | Backend | Firebase Cloud Functions | Query API, webhooks, triggers |
 | Database | Firestore | KB articles, clients, escalations |
 | Web Dashboard | Next.js, shadcn/ui | Admin interface |

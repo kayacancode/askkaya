@@ -30,6 +30,7 @@ import {
   createInviteCode,
   listInviteCodes,
 } from './api/invite';
+import { handleMcpRequest } from './mcp/transport';
 import * as admin from 'firebase-admin';
 
 // Lazy initialize Firebase Admin and Firestore
@@ -1043,5 +1044,31 @@ export const onKBArticleCreated = onDocumentCreated(
         embedding_error: (error as Error).message,
       });
     }
+  }
+);
+
+/**
+ * HTTP endpoint: MCP Server
+ * Model Context Protocol server for AI agents to access AskKaya KB.
+ *
+ * Supports:
+ * - POST: Send JSON-RPC messages
+ * - GET: SSE streaming (with session ID)
+ * - DELETE: Close session
+ *
+ * Authentication: Bearer <firebase-id-token>
+ *
+ * Tools available:
+ * - query: Ask questions to the AskKaya knowledge base
+ * - status: Check account status
+ * - escalations: List recent support escalations
+ */
+export const mcpServer = onRequest(
+  {
+    invoker: 'public',
+    timeoutSeconds: 300, // 5 minute timeout for long-running queries
+  },
+  async (req, res) => {
+    await handleMcpRequest(req, res);
   }
 );
