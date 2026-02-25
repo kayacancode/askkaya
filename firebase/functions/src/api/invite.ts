@@ -146,10 +146,11 @@ export async function signupWithInvite(
     });
 
     // Create client record for the user
+    // Start with 'pending' billing status - must complete payment to activate
     const clientRef = await db.collection('clients').add({
       name: email.split('@')[0],
       email,
-      billing_status: 'active', // Start with active, can implement trial later
+      billing_status: 'pending', // Requires payment to activate
       setup_context: ['general'],
       created_at: admin.firestore.FieldValue.serverTimestamp(),
       invited_by_code: normalizedCode,

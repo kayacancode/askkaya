@@ -78,8 +78,19 @@ func runQuery(cmd *cobra.Command, args []string) error {
 
 	response, err := apiClient.Query(question)
 	if err != nil {
-		if strings.Contains(err.Error(), "billing suspended") {
-			fmt.Fprintln(os.Stderr, "Your account has been suspended. Please contact support.")
+		errStr := err.Error()
+		if strings.Contains(errStr, "billing_pending") || strings.Contains(errStr, "Payment required") {
+			fmt.Fprintln(os.Stderr, "")
+			fmt.Fprintln(os.Stderr, "💳 Payment required to use AskKaya.")
+			fmt.Fprintln(os.Stderr, "")
+			fmt.Fprintln(os.Stderr, "Complete your subscription at: https://askkaya.com/billing")
+			fmt.Fprintln(os.Stderr, "Or contact Kaya to get your payment link.")
+			return nil
+		}
+		if strings.Contains(errStr, "billing_suspended") || strings.Contains(errStr, "billing suspended") {
+			fmt.Fprintln(os.Stderr, "")
+			fmt.Fprintln(os.Stderr, "⚠️  Your subscription has been suspended.")
+			fmt.Fprintln(os.Stderr, "Please update your payment method or contact support.")
 			return nil
 		}
 		return fmt.Errorf("query failed: %w", err)

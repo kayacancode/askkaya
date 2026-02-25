@@ -106,8 +106,13 @@ export async function processQuery(
   const clientData = clientDoc.data();
   
   // Check billing status
-  if (clientData?.billingStatus === 'suspended') {
-    logger.warn('Billing suspended', { clientId });
+  const billingStatus = clientData?.billing_status;
+  if (billingStatus === 'pending') {
+    logger.warn('Billing pending - payment required', { clientId });
+    throw new Error('billing_pending');
+  }
+  if (billingStatus === 'suspended' || billingStatus === 'cancelled') {
+    logger.warn('Billing suspended or cancelled', { clientId, billingStatus });
     throw new Error('billing_suspended');
   }
   

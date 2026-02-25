@@ -14,7 +14,7 @@ import * as logger from './utils/logger';
 // API imports
 import { processQuery, healthCheck } from './api/query';
 import { authenticateRequest, authenticateUserOnly, type AuthenticatedRequest, type AuthResponse } from './middleware/auth';
-import { handleStripeWebhook, linkClientToStripe, createPaymentLink } from './billing/stripe';
+import { handleStripeWebhook, linkClientToStripe, createPaymentLink, getOrCreatePaymentLink } from './billing/stripe';
 import { verifyWebhookSignature, parseGitHubPush, type GitHubPushPayload } from './processing/webhook';
 import { generateEmbedding } from './services/embeddings';
 import {
@@ -199,6 +199,15 @@ export const queryApi = onRequest({ invoker: 'public' }, async (req, res) => {
         return;
       }
 
+      if (err.message === 'billing_pending') {
+        logger.logRequestComplete(req.method, req.path, 402, durationMs);
+        res.status(402).json({
+          error: 'billing_pending',
+          message: 'Payment required. Please complete your subscription setup.',
+        });
+        return;
+      }
+
       if (err.message === 'billing_suspended') {
         logger.logRequestComplete(req.method, req.path, 403, durationMs);
         res.status(403).json({ error: 'billing_suspended', message: 'Subscription inactive' });
@@ -309,12 +318,20 @@ export const meApi = onRequest({ invoker: 'public' }, async (req, res) => {
       const isAdmin = userData?.is_admin === true;
       const role = isAdmin ? 'admin' : 'client';
 
+      // Get billing status
+      let billingStatus = 'active';
+      if (clientId) {
+        const clientDoc = await db.collection('clients').doc(clientId).get();
+        billingStatus = clientDoc.data()?.billing_status || 'active';
+      }
+
       res.status(200).json({
         user_id: user.uid,
         email: user.email,
         client_id: clientId,
         client_name: clientName,
         role: role,
+        billing_status: billingStatus,
       });
     } catch (error) {
       logger.error('meApi error', error as Error);
@@ -365,11 +382,37 @@ export const signupApi = onRequest({ invoker: 'public' }, async (req, res) => {
       return;
     }
 
+    // Generate Stripe payment link for the new user
+    const priceId = process.env['STRIPE_DEFAULT_PRICE_ID'];
+    let paymentUrl: string | undefined;
+
+    if (priceId && result.client_id) {
+      try {
+        const paymentResult = await createPaymentLink(
+          result.client_id,
+          email,
+          email.split('@')[0], // name from email
+          priceId,
+          'https://askkaya.com/success?client_id=' + result.client_id,
+          'https://askkaya.com/cancel'
+        );
+        if (paymentResult.success && paymentResult.url) {
+          paymentUrl = paymentResult.url;
+        }
+      } catch (err) {
+        logger.warn('Failed to create payment link during signup', { error: (err as Error).message });
+        // Don't fail signup if payment link fails - they can get it later
+      }
+    }
+
     res.status(201).json({
       success: true,
       user_id: result.user_id,
       client_id: result.client_id,
-      message: 'Account created successfully. Please login.',
+      payment_url: paymentUrl,
+      message: paymentUrl
+        ? 'Account created! Complete payment to activate your subscription.'
+        : 'Account created successfully. Contact support to set up billing.',
     });
   } catch (error) {
     logger.error('Signup error', error as Error);
@@ -582,6 +625,94 @@ export const createPaymentLinkApi = onRequest({ invoker: 'public' }, async (req,
       } catch (error) {
         logger.error('Create payment link error', error as Error);
         res.status(500).json({ error: 'Failed to create payment link' });
+      }
+    }
+  );
+});
+
+/**
+ * HTTP endpoint: Billing setup for current user
+ * Generates a payment link for the authenticated user's subscription
+ *
+ * POST /billingSetupApi
+ * Body: { client_id?: string } - optional, uses authenticated user's client if not provided
+ */
+export const billingSetupApi = onRequest({ invoker: 'public' }, async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  logger.logRequest(req.method, req.path);
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+
+  // Authenticate user
+  await authenticateUserOnly(
+    req as AuthenticatedRequest,
+    res as unknown as AuthResponse,
+    async () => {
+      try {
+        const user = (req as AuthenticatedRequest).user;
+        if (!user) {
+          res.status(401).json({ error: 'Not authenticated' });
+          return;
+        }
+
+        // Get client ID from request body or user's profile
+        let clientId = req.body?.client_id;
+
+        if (!clientId) {
+          // Look up user's client ID
+          const userDoc = await getDb().collection('users').doc(user.uid).get();
+          clientId = userDoc.data()?.client_id;
+        }
+
+        if (!clientId) {
+          res.status(400).json({ error: 'No client associated with this account' });
+          return;
+        }
+
+        // Get client details
+        const clientDoc = await getDb().collection('clients').doc(clientId).get();
+        if (!clientDoc.exists) {
+          res.status(404).json({ error: 'Client not found' });
+          return;
+        }
+
+        const clientData = clientDoc.data()!;
+        const priceId = process.env['STRIPE_DEFAULT_PRICE_ID'];
+
+        if (!priceId) {
+          res.status(500).json({ error: 'Payment system not configured' });
+          return;
+        }
+
+        const result = await createPaymentLink(
+          clientId,
+          clientData.email || user.email || '',
+          clientData.name || '',
+          priceId,
+          'https://askkaya.com/success?client_id=' + clientId,
+          'https://askkaya.com/cancel'
+        );
+
+        if (!result.success) {
+          res.status(400).json({ success: false, error: result.error });
+          return;
+        }
+
+        res.status(200).json(result);
+      } catch (error) {
+        logger.error('Billing setup error', error as Error);
+        res.status(500).json({ error: 'Failed to generate payment link' });
       }
     }
   );

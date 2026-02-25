@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -124,12 +126,46 @@ func runSignup(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("signup failed: %s", result.Error)
 	}
 
-	fmt.Println("Account created successfully!")
+	fmt.Println("✓ Account created successfully!")
 	fmt.Println()
-	fmt.Println("You can now login with:")
-	fmt.Printf("  askkaya auth login -e %s\n", email)
+
+	// If we have a payment URL, offer to open it
+	if result.PaymentURL != "" {
+		fmt.Println("📋 Complete your subscription to start using AskKaya.")
+		fmt.Println()
+		fmt.Println("Opening payment page in your browser...")
+
+		if err := openBrowser(result.PaymentURL); err != nil {
+			fmt.Println()
+			fmt.Println("Could not open browser. Please visit this URL to complete payment:")
+			fmt.Println(result.PaymentURL)
+		}
+
+		fmt.Println()
+		fmt.Println("After payment, login with:")
+		fmt.Printf("  askkaya auth login -e %s\n", email)
+	} else {
+		fmt.Println("You can now login with:")
+		fmt.Printf("  askkaya auth login -e %s\n", email)
+	}
 
 	return nil
+}
+
+// openBrowser opens the specified URL in the default browser
+func openBrowser(url string) error {
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", url)
+	case "linux":
+		cmd = exec.Command("xdg-open", url)
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
+	default:
+		return fmt.Errorf("unsupported platform")
+	}
+	return cmd.Start()
 }
 
 type validateResponse struct {
@@ -164,11 +200,12 @@ func validateInvite(code string) (*validateResponse, error) {
 }
 
 type signupResponse struct {
-	Success  bool   `json:"success"`
-	UserID   string `json:"user_id,omitempty"`
-	ClientID string `json:"client_id,omitempty"`
-	Message  string `json:"message,omitempty"`
-	Error    string `json:"error,omitempty"`
+	Success    bool   `json:"success"`
+	UserID     string `json:"user_id,omitempty"`
+	ClientID   string `json:"client_id,omitempty"`
+	PaymentURL string `json:"payment_url,omitempty"`
+	Message    string `json:"message,omitempty"`
+	Error      string `json:"error,omitempty"`
 }
 
 func createAccount(inviteCode, email, password string) (*signupResponse, error) {
