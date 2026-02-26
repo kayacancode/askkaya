@@ -62,7 +62,17 @@ export async function handleMcpRequest(req: HttpRequest, res: HttpResponse): Pro
       jsonrpc: '2.0',
       error: {
         code: -32001,
-        message: 'Missing or invalid Authorization header. Use: Bearer <firebase-id-token>',
+        message: `Authentication required. To use AskKaya:
+
+1. Install the CLI: brew tap kayacancode/askkaya && brew install askkaya
+
+2. Sign up (need invite code from Kaya):
+   askkaya auth signup -c YOUR_INVITE_CODE -e your@email.com
+
+3. Or log in if you have an account:
+   askkaya auth login -e your@email.com
+
+Contact kaya@forever22studios.com for an invite code.`,
       },
       id: null,
     });
@@ -77,7 +87,15 @@ export async function handleMcpRequest(req: HttpRequest, res: HttpResponse): Pro
       jsonrpc: '2.0',
       error: {
         code: -32001,
-        message: 'Invalid or expired token',
+        message: `Authentication failed. Your token may be expired.
+
+Please log in again:
+  askkaya auth login -e your@email.com
+
+If you don't have an account, sign up first:
+  askkaya auth signup -c YOUR_INVITE_CODE -e your@email.com
+
+Contact kaya@forever22studios.com for help.`,
       },
       id: null,
     });

@@ -30,6 +30,7 @@ import {
   createInviteCode,
   listInviteCodes,
 } from './api/invite';
+import { provisionAccount } from './api/provision';
 import { handleMcpRequest } from './mcp/transport';
 import * as admin from 'firebase-admin';
 
@@ -642,6 +643,76 @@ export const createPaymentLinkApi = onRequest({ invoker: 'public' }, async (req,
       } catch (error) {
         logger.error('Create payment link error', error as Error);
         res.status(500).json({ error: 'Failed to create payment link' });
+      }
+    }
+  );
+});
+
+/**
+ * HTTP endpoint: Provision account for existing customer (admin only)
+ * Creates Firebase Auth user and client record without requiring signup flow
+ *
+ * POST /provisionApi
+ * Body: { email: string, name?: string, billing_status?: 'active' | 'pending' }
+ */
+export const provisionApi = onRequest({ invoker: 'public' }, async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  logger.logRequest(req.method, req.path);
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+
+  // Authenticate (admin only)
+  await authenticateUserOnly(
+    req as AuthenticatedRequest,
+    res as unknown as AuthResponse,
+    async () => {
+      try {
+        // Check if user is admin
+        const user = (req as AuthenticatedRequest).user;
+        if (!user) {
+          res.status(401).json({ error: 'Not authenticated' });
+          return;
+        }
+
+        const userDoc = await getDb().collection('users').doc(user.uid).get();
+        if (!userDoc.exists || userDoc.data()?.is_admin !== true) {
+          res.status(403).json({ error: 'Admin access required' });
+          return;
+        }
+
+        const { email, name, billing_status = 'active' } = req.body;
+
+        if (!email || typeof email !== 'string') {
+          res.status(400).json({ error: 'Email is required' });
+          return;
+        }
+
+        const result = await provisionAccount({
+          email,
+          name,
+          billing_status: billing_status as 'active' | 'pending',
+        });
+
+        if (!result.success) {
+          res.status(400).json({ success: false, error: result.error });
+          return;
+        }
+
+        res.status(201).json(result);
+      } catch (error) {
+        logger.error('Provision error', error as Error);
+        res.status(500).json({ error: 'Failed to provision account' });
       }
     }
   );

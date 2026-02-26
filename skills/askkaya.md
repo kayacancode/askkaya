@@ -21,22 +21,58 @@ askkaya query "<question>"
 - "What are the OpenClaw configuration options?" → `askkaya query "What are the OpenClaw configuration options?"`
 - "How do I backup my setup?" → `askkaya query "How do I backup my setup?"`
 
-## If CLI Not Installed
+## Handling Errors
 
-If `askkaya` command is not found, instruct the user:
+### If CLI Not Installed
+
+If `askkaya` command is not found, guide the user:
 
 ```bash
 brew tap kayacancode/askkaya
 brew install askkaya
+```
+
+Then have them sign up or log in (see below).
+
+### If Not Logged In
+
+If the output contains "not logged in" or "auth login", the user needs to authenticate.
+
+**For new users** (need an invite code from Kaya):
+```bash
 askkaya auth signup -c <INVITE_CODE> -e <EMAIL>
+```
+
+**For existing users** (already have an account):
+```bash
 askkaya auth login -e <EMAIL>
 ```
 
-Contact Kaya for an invite code.
+Tell them: "Contact Kaya (kaya@forever22studios.com) if you need an invite code or help with your account."
+
+### If Payment Required
+
+If the output contains "Payment required" or "billing", tell the user:
+
+"Your AskKaya subscription needs to be set up. Contact Kaya to complete your billing setup, or run `askkaya billing setup` to get a payment link."
+
+### If Billing Suspended
+
+If the output contains "suspended", tell the user:
+
+"Your subscription appears to be inactive. Please contact Kaya to resolve this."
 
 ## Response Handling
 
-Display the response including:
+On success, display:
 - The answer text
 - Confidence score (if shown)
-- Note if escalated: "Kaya has been notified and will get back to you shortly!"
+- If escalated: "Kaya has been notified and will get back to you shortly!"
+
+## Screenshots
+
+You can include screenshots to help diagnose issues:
+
+```bash
+askkaya query "What's this error?" --image /path/to/screenshot.png
+```
