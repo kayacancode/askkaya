@@ -17,8 +17,8 @@ var (
 	apiKey     string
 	clientID   string
 
-	// Build-time injected values (via -ldflags)
-	defaultAPIKey = "" // Set at build time
+	// Firebase Web API Key (safe to include in client code)
+	defaultAPIKey = "AIzaSyB73ewGKfrvzmYfM-YdAxhsWRslVxjv0ic"
 )
 
 var rootCmd = &cobra.Command{
@@ -31,7 +31,7 @@ The system uses AI-powered RAG to provide accurate answers from your
 organization's knowledge base.
 
 Run without arguments to launch the interactive TUI.`,
-	Version: "0.2.5",
+	Version: "0.2.6",
 	RunE:    runInteractive,
 }
 
