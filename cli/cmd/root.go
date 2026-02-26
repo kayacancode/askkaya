@@ -126,6 +126,7 @@ func hideAdminCommandsIfNotAdmin() {
 
 	// If not logged in or role is not admin, hide admin commands
 	if err != nil || tokens.Role != "admin" {
+		adminCmd.Hidden = true
 		heartbeatCmd.Hidden = true
 		inviteCmd.Hidden = true
 	}
