@@ -31,7 +31,7 @@ The system uses AI-powered RAG to provide accurate answers from your
 organization's knowledge base.
 
 Run without arguments to launch the interactive TUI.`,
-	Version: "0.2.3",
+	Version: "0.2.4",
 	RunE:    runInteractive,
 }
 
