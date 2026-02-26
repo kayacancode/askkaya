@@ -31,7 +31,7 @@ You'll need a valid invite code to sign up. Contact your administrator
 or the person who referred you to get an invite code.
 
 Example:
-  askkaya auth signup -c ABC12345 -e you@example.com`,
+  askkaya auth signup`,
 	RunE: runSignup,
 }
 
@@ -143,10 +143,10 @@ func runSignup(cmd *cobra.Command, args []string) error {
 
 		fmt.Println()
 		fmt.Println("After payment, login with:")
-		fmt.Printf("  askkaya auth login -e %s\n", email)
+		fmt.Println("  askkaya auth login")
 	} else {
 		fmt.Println("You can now login with:")
-		fmt.Printf("  askkaya auth login -e %s\n", email)
+		fmt.Println("  askkaya auth login")
 	}
 
 	return nil

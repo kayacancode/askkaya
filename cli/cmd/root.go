@@ -49,10 +49,10 @@ func runInteractive(cmd *cobra.Command, args []string) error {
 		fmt.Println("Welcome to AskKaya!")
 		fmt.Println()
 		fmt.Println("To get started, log in first:")
-		fmt.Println("  askkaya auth login -e your@email.com")
+		fmt.Println("  askkaya auth login")
 		fmt.Println()
 		fmt.Println("Don't have an account? Sign up with an invite code:")
-		fmt.Println("  askkaya auth signup -c INVITE_CODE -e your@email.com")
+		fmt.Println("  askkaya auth signup")
 		return nil
 	}
 
