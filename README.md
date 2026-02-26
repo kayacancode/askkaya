@@ -19,12 +19,15 @@ AskKaya is invite-only. Contact [Kaya](mailto:kaya@forever22studios.com) to get 
 askkaya auth signup -c YOUR_INVITE_CODE -e your@email.com
 ```
 
-### Login & Query
+### Login & Set API Key
 
 ```bash
 askkaya auth login -e your@email.com
+askkaya config set-api-key sk-ant-api03-xxx  # Your Anthropic API key
 askkaya query "How do I backup my setup?"
 ```
+
+Get your Anthropic API key at: https://console.anthropic.com/settings/keys
 
 ### Connect Your AI Agent (Recommended)
 

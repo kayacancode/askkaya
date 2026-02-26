@@ -124,6 +124,22 @@ export async function processQuery(
   
   const clientName = clientData?.name || 'Unknown Client';
   const setupContext = clientData?.setup_context || [];
+  const clientEmail = clientData?.email || '';
+
+  // Determine which API key to use
+  // Admin accounts (kayarjones901@gmail.com) use the default key
+  // All other users must provide their own API key
+  const ADMIN_EMAILS = ['kayarjones901@gmail.com'];
+  const isAdmin = ADMIN_EMAILS.includes(clientEmail);
+  const clientApiKey = clientData?.anthropic_api_key;
+
+  if (!isAdmin && !clientApiKey) {
+    logger.warn('Client missing API key', { clientId, clientEmail });
+    throw new Error('api_key_required');
+  }
+
+  // Use client's key if they have one, otherwise use default (for admins)
+  const anthropicApiKey = clientApiKey || undefined;
   
   try {
     // Step 1: Retrieve relevant KB articles using RAG
@@ -145,7 +161,7 @@ export async function processQuery(
     const context = formatRetrievedContext(ragResults);
     
     // Step 3: Generate response with LLM (with optional image for vision)
-    const generation = await generateResponse(question, context, clientName, image);
+    const generation = await generateResponse(question, context, clientName, image, anthropicApiKey);
     
     logger.debug('Response generated', {
       clientId,

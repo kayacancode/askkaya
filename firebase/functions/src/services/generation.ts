@@ -12,16 +12,27 @@ const CRITICAL_THRESHOLD = 0.4;     // Below this, refuse to answer
 
 const MODEL = 'claude-sonnet-4-5-20250929';
 
-// Lazy-initialize Anthropic client to allow env vars to load first
-let _anthropic: Anthropic | null = null;
-function getAnthropic(): Anthropic {
-  if (!_anthropic) {
-    _anthropic = new Anthropic({
+// Default Anthropic client using env vars (for admin/Kaya's account)
+let _defaultAnthropic: Anthropic | null = null;
+function getDefaultAnthropic(): Anthropic {
+  if (!_defaultAnthropic) {
+    _defaultAnthropic = new Anthropic({
       apiKey: process.env['ANTHROPIC_API_KEY'],
       baseURL: process.env['ANTHROPIC_BASE_URL'],
     });
   }
-  return _anthropic;
+  return _defaultAnthropic;
+}
+
+// Get Anthropic client - uses custom API key if provided, otherwise default
+function getAnthropic(customApiKey?: string): Anthropic {
+  if (customApiKey) {
+    return new Anthropic({
+      apiKey: customApiKey,
+      baseURL: process.env['ANTHROPIC_BASE_URL'],
+    });
+  }
+  return getDefaultAnthropic();
 }
 const MAX_TOKENS = 1024;
 
@@ -44,13 +55,15 @@ export interface ImageInput {
  * @param context - Retrieved context from RAG
  * @param clientName - Client name for personalization
  * @param image - Optional image input for vision queries
+ * @param anthropicApiKey - Optional custom API key (uses default if not provided)
  * @returns Generated response with confidence score
  */
 export async function generateResponse(
   query: string,
   context: string,
   clientName: string,
-  image?: ImageInput
+  image?: ImageInput,
+  anthropicApiKey?: string
 ): Promise<GenerationResult> {
   const systemPrompt = `You are a helpful customer support assistant for ${clientName}.
 Your job is to answer questions based on the provided knowledge base context.
@@ -97,7 +110,7 @@ Please provide your answer, confidence score, and reasoning.`;
     : userPrompt;
 
   try {
-    const response = await getAnthropic().messages.create({
+    const response = await getAnthropic(anthropicApiKey).messages.create({
       model: MODEL,
       max_tokens: MAX_TOKENS,
       system: systemPrompt,

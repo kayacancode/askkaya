@@ -62,6 +62,17 @@ If the output contains "suspended", tell the user:
 
 "Your subscription appears to be inactive. Please contact Kaya to resolve this."
 
+### If API Key Required
+
+If the output contains "API key required" or "api_key_required", tell the user:
+
+"AskKaya requires your own Anthropic API key. To set it up:
+
+1. Get your key at: https://console.anthropic.com/settings/keys
+2. Run: `askkaya config set-api-key YOUR_KEY`
+
+Then try your question again."
+
 ## Response Handling
 
 On success, display:

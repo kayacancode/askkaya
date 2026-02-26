@@ -232,6 +232,15 @@ export const queryApi = onRequest({ invoker: 'public' }, async (req, res) => {
         return;
       }
 
+      if (err.message === 'api_key_required') {
+        logger.logRequestComplete(req.method, req.path, 403, durationMs);
+        res.status(403).json({
+          error: 'api_key_required',
+          message: 'Anthropic API key required. Set your API key with: askkaya config set-api-key YOUR_KEY',
+        });
+        return;
+      }
+
       logger.error('Query API error', err, { durationMs });
       logger.logRequestComplete(req.method, req.path, 500, durationMs);
       res.status(500).json({ error: 'Internal server error' });
@@ -643,6 +652,84 @@ export const createPaymentLinkApi = onRequest({ invoker: 'public' }, async (req,
       } catch (error) {
         logger.error('Create payment link error', error as Error);
         res.status(500).json({ error: 'Failed to create payment link' });
+      }
+    }
+  );
+});
+
+/**
+ * HTTP endpoint: Set Anthropic API key for client
+ * Allows users to set their own API key to avoid using Kaya's credits
+ *
+ * POST /setApiKeyApi
+ * Body: { api_key: string }
+ */
+export const setApiKeyApi = onRequest({ invoker: 'public' }, async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  logger.logRequest(req.method, req.path);
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+
+  // Authenticate user
+  await authenticateUserOnly(
+    req as AuthenticatedRequest,
+    res as unknown as AuthResponse,
+    async () => {
+      try {
+        const user = (req as AuthenticatedRequest).user;
+        if (!user) {
+          res.status(401).json({ error: 'Not authenticated' });
+          return;
+        }
+
+        const { api_key } = req.body;
+
+        if (!api_key || typeof api_key !== 'string') {
+          res.status(400).json({ error: 'api_key is required' });
+          return;
+        }
+
+        // Basic validation - Anthropic keys start with 'sk-ant-'
+        if (!api_key.startsWith('sk-ant-')) {
+          res.status(400).json({ error: 'Invalid API key format. Anthropic keys start with sk-ant-' });
+          return;
+        }
+
+        // Get user's client ID
+        const userDoc = await getDb().collection('users').doc(user.uid).get();
+        const clientId = userDoc.data()?.client_id;
+
+        if (!clientId) {
+          res.status(400).json({ error: 'No client associated with this account' });
+          return;
+        }
+
+        // Update the client record with the API key
+        await getDb().collection('clients').doc(clientId).update({
+          anthropic_api_key: api_key,
+          api_key_updated_at: admin.firestore.FieldValue.serverTimestamp(),
+        });
+
+        logger.info('API key updated', { clientId });
+
+        res.status(200).json({
+          success: true,
+          message: 'API key saved successfully. You can now use AskKaya with your own credits.',
+        });
+      } catch (error) {
+        logger.error('Set API key error', error as Error);
+        res.status(500).json({ error: 'Failed to save API key' });
       }
     }
   );

@@ -158,15 +158,36 @@ export function createMcpServer(userContext: UserContext): McpServer {
           ],
         };
       } catch (error) {
+        const errorMessage = (error as Error).message;
         logger.error('MCP query failed', error as Error, {
           clientId: userContext.clientId,
         });
+
+        // Handle specific errors with helpful messages
+        if (errorMessage === 'api_key_required') {
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: `Anthropic API key required.
+
+AskKaya requires you to use your own Anthropic API key. To set it up:
+
+1. Get your key at: https://console.anthropic.com/settings/keys
+2. Run: askkaya config set-api-key YOUR_KEY
+
+Then try your query again.`,
+              },
+            ],
+            isError: true,
+          };
+        }
 
         return {
           content: [
             {
               type: 'text' as const,
-              text: `Error processing query: ${(error as Error).message}`,
+              text: `Error processing query: ${errorMessage}`,
             },
           ],
           isError: true,
