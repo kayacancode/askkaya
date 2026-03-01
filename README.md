@@ -19,15 +19,32 @@ AskKaya is invite-only. Contact [Kaya](mailto:kaya@forever22studios.com) to get 
 askkaya auth signup -c YOUR_INVITE_CODE -e your@email.com
 ```
 
-### Login & Set API Key
+### Login & Query
 
 ```bash
 askkaya auth login -e your@email.com
-askkaya config set-api-key sk-ant-api03-xxx  # Your Anthropic API key
 askkaya query "How do I backup my setup?"
 ```
 
-Get your Anthropic API key at: https://console.anthropic.com/settings/keys
+No API keys needed - all LLM requests are handled through AskKaya's secure proxy.
+
+### Create an API Key (for Scripts)
+
+For programmatic access, generate an API key:
+
+```bash
+askkaya keys create "My Script"
+# Returns: sk-kaya-...
+```
+
+Use it with the OpenAI-compatible endpoint:
+
+```bash
+curl -X POST https://us-central1-askkaya-47cef.cloudfunctions.net/llmProxy/v1/chat/completions \
+  -H "Authorization: Bearer sk-kaya-..." \
+  -H "Content-Type: application/json" \
+  -d '{"model":"claude-sonnet-4-5","messages":[{"role":"user","content":"Hello"}]}'
+```
 
 ### Connect Your AI Agent (Recommended)
 
@@ -88,15 +105,26 @@ The skill calls the CLI under the hood, so make sure you're logged in first.
 │ (AI Agents) │             │
 └─────────────┘     ┌───────┴───────┐
                     ▼               ▼
-              ┌──────────┐   ┌──────────┐
-              │  Claude  │   │ OpenAI   │
-              │   LLM    │   │Embeddings│
-              └──────────┘   └──────────┘
+              ┌──────────┐   ┌─────────────────┐
+              │ OpenAI   │   │ Cloudflare AI   │
+              │Embeddings│   │    Gateway      │
+              └──────────┘   └────────┬────────┘
+                                      │
+                    ┌─────────────────┼─────────────────┐
+                    ▼                 ▼                 ▼
+              ┌──────────┐     ┌──────────┐     ┌────────────┐
+              │Anthropic │     │  OpenAI  │     │ OpenRouter │
+              │ (Claude) │     │ (GPT-4o) │     │  (Qwen)    │
+              └──────────┘     └──────────┘     └────────────┘
 ```
 
 ## Features
 
 - **RAG-powered answers** - Retrieves context from knowledge base
+- **LLM proxy** - Centralized routing through Cloudflare AI Gateway
+- **API keys** - Generate `sk-kaya-*` keys for programmatic access
+- **Usage tracking** - Per-request logging with tokens and costs
+- **Multi-model support** - Anthropic, OpenAI, OpenRouter (Qwen, DeepSeek)
 - **Auto-escalation** - Low confidence queries escalate to humans via Telegram
 - **Auto-learn** - Replies to escalations automatically add to KB
 - **Multi-tenant** - Client isolation with personal and global KB articles
@@ -108,10 +136,65 @@ The skill calls the CLI under the hood, so make sure you're logged in first.
 |-----------|------|-------------|
 | CLI | Go, Cobra, Bubble Tea | Terminal client with TUI mode |
 | MCP Server | TypeScript, MCP SDK | AI agent integration (Claude Code, OpenClaw) |
+| LLM Proxy | Firebase, Cloudflare | Centralized model routing with tracking |
 | Backend | Firebase Cloud Functions | Query API, webhooks, triggers |
-| Database | Firestore | KB articles, clients, escalations |
+| Database | Firestore | KB articles, clients, escalations, usage |
 | Web Dashboard | Next.js, shadcn/ui | Admin interface |
 | Notifications | Telegram Bot API | Escalation alerts |
+
+## CLI Commands
+
+```bash
+# Interactive
+askkaya                    # Launch interactive TUI
+
+# Authentication
+askkaya auth login         # Authenticate
+askkaya auth logout        # Clear credentials
+askkaya auth signup        # Sign up with invite code
+
+# Queries
+askkaya query "..."        # Ask a question (one-shot)
+askkaya query -i           # Interactive query mode
+askkaya query "..." --image ./screenshot.png  # Include image
+
+# API Keys
+askkaya keys create "name" # Create new API key
+askkaya keys list          # List all keys
+askkaya keys revoke <id>   # Revoke a key
+
+# Status
+askkaya status             # Check connection
+askkaya heartbeat          # Start background daemon
+
+# Admin (requires admin role)
+askkaya admin set-model --user <uid> --model <model>     # Assign model to user
+askkaya admin set-model --client <id> --model <model>    # Set client default
+askkaya admin provision -e email@example.com --active    # Pre-provision account
+askkaya admin link-stripe -c <client-id> -s cus_xxx      # Link Stripe customer
+askkaya invite generate                                   # Generate invite code
+```
+
+## LLM Proxy
+
+AskKaya routes all LLM requests through a centralized proxy with:
+
+- **No API key distribution** - Users never see provider API keys
+- **Cloudflare AI Gateway** - Request logging, caching, rate limiting
+- **Multi-provider support** - Route to different models per user
+- **Usage tracking** - Token counts and cost attribution per request
+- **OpenAI-compatible API** - Standard `/v1/chat/completions` endpoint
+
+### Available Models
+
+| Model ID | Provider | Description |
+|----------|----------|-------------|
+| `claude-sonnet-4-5` | Anthropic | Claude Sonnet 4.5 (default) |
+| `claude-haiku-3-5` | Anthropic | Claude Haiku 3.5 (fast) |
+| `gpt-4o-mini` | OpenAI | GPT-4o Mini (budget) |
+| `qwen-2.5-72b` | OpenRouter | Qwen 2.5 72B (open source) |
+
+Models are assigned by admins - users cannot switch models themselves.
 
 ## Development
 
@@ -151,28 +234,30 @@ firebase deploy --only functions
 cd web && vercel --prod
 ```
 
-## CLI Commands
-
-```bash
-askkaya                # Launch interactive TUI
-askkaya auth login     # Authenticate
-askkaya auth logout    # Clear credentials
-askkaya query "..."    # Ask a question (one-shot)
-askkaya status         # Check connection
-askkaya heartbeat      # Start background daemon
-```
-
 ## Environment Variables
 
 ### Firebase Functions (.env)
 
-```
-OPENAI_API_KEY=...
-ANTHROPIC_API_KEY=...
+```bash
+# Embeddings
+OPENAI_API_KEY=sk-...
+
+# LLM Providers (routed through Cloudflare)
+ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...
+OPENROUTER_API_KEY=sk-or-...
+
+# Cloudflare AI Gateway
+ANTHROPIC_BASE_URL=https://gateway.ai.cloudflare.com/v1/{account}/{gateway}/anthropic
+OPENAI_BASE_URL=https://gateway.ai.cloudflare.com/v1/{account}/{gateway}/openai
+
+# Notifications
 TELEGRAM_BOT_TOKEN=...
 TELEGRAM_CHAT_ID=...
-STRIPE_SECRET_KEY=...
-STRIPE_WEBHOOK_SECRET=...
+
+# Billing
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
 ## License
