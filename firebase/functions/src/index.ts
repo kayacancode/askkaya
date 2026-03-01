@@ -34,6 +34,13 @@ import { provisionAccount } from './api/provision';
 import { handleMcpRequest } from './mcp/transport';
 import * as admin from 'firebase-admin';
 
+// LLM Proxy imports
+import { apiKeyAuthMiddleware } from './middleware/api-key-auth';
+import { createAPIKey, listAPIKeys, revokeAPIKey, verifyAPIKey } from './services/api-keys';
+import { getAssignedModel, setAssignedModel, setClientDefaultModel, getEnabledModels } from './services/model-config';
+import { getProvider, type ChatCompletionRequest, type LLMErrorResponse } from './services/providers';
+import { tracker, calculateCost } from './services/request-tracker';
+
 // Lazy initialize Firebase Admin and Firestore
 function getDb(): admin.firestore.Firestore {
   if (!admin.apps.length) {
@@ -229,15 +236,6 @@ export const queryApi = onRequest({ invoker: 'public' }, async (req, res) => {
       if (err.message === 'billing_suspended') {
         logger.logRequestComplete(req.method, req.path, 403, durationMs);
         res.status(403).json({ error: 'billing_suspended', message: 'Subscription inactive' });
-        return;
-      }
-
-      if (err.message === 'api_key_required') {
-        logger.logRequestComplete(req.method, req.path, 403, durationMs);
-        res.status(403).json({
-          error: 'api_key_required',
-          message: 'Anthropic API key required. Set your API key with: askkaya config set-api-key YOUR_KEY',
-        });
         return;
       }
 
@@ -652,84 +650,6 @@ export const createPaymentLinkApi = onRequest({ invoker: 'public' }, async (req,
       } catch (error) {
         logger.error('Create payment link error', error as Error);
         res.status(500).json({ error: 'Failed to create payment link' });
-      }
-    }
-  );
-});
-
-/**
- * HTTP endpoint: Set Anthropic API key for client
- * Allows users to set their own API key to avoid using Kaya's credits
- *
- * POST /setApiKeyApi
- * Body: { api_key: string }
- */
-export const setApiKeyApi = onRequest({ invoker: 'public' }, async (req, res) => {
-  res.set('Access-Control-Allow-Origin', '*');
-  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-  if (req.method === 'OPTIONS') {
-    res.status(204).send('');
-    return;
-  }
-
-  logger.logRequest(req.method, req.path);
-
-  if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Method Not Allowed' });
-    return;
-  }
-
-  // Authenticate user
-  await authenticateUserOnly(
-    req as AuthenticatedRequest,
-    res as unknown as AuthResponse,
-    async () => {
-      try {
-        const user = (req as AuthenticatedRequest).user;
-        if (!user) {
-          res.status(401).json({ error: 'Not authenticated' });
-          return;
-        }
-
-        const { api_key } = req.body;
-
-        if (!api_key || typeof api_key !== 'string') {
-          res.status(400).json({ error: 'api_key is required' });
-          return;
-        }
-
-        // Basic validation - Anthropic keys start with 'sk-ant-'
-        if (!api_key.startsWith('sk-ant-')) {
-          res.status(400).json({ error: 'Invalid API key format. Anthropic keys start with sk-ant-' });
-          return;
-        }
-
-        // Get user's client ID
-        const userDoc = await getDb().collection('users').doc(user.uid).get();
-        const clientId = userDoc.data()?.client_id;
-
-        if (!clientId) {
-          res.status(400).json({ error: 'No client associated with this account' });
-          return;
-        }
-
-        // Update the client record with the API key
-        await getDb().collection('clients').doc(clientId).update({
-          anthropic_api_key: api_key,
-          api_key_updated_at: admin.firestore.FieldValue.serverTimestamp(),
-        });
-
-        logger.info('API key updated', { clientId });
-
-        res.status(200).json({
-          success: true,
-          message: 'API key saved successfully. You can now use AskKaya with your own credits.',
-        });
-      } catch (error) {
-        logger.error('Set API key error', error as Error);
-        res.status(500).json({ error: 'Failed to save API key' });
       }
     }
   );
@@ -1246,3 +1166,378 @@ export const mcpServer = onRequest(
     await handleMcpRequest(req, res);
   }
 );
+
+// =============================================================================
+// LLM PROXY ENDPOINTS
+// =============================================================================
+
+/**
+ * HTTP endpoint: LLM Proxy - Chat Completions
+ * OpenAI-compatible chat completions endpoint
+ *
+ * POST /llmProxy
+ * Path: /v1/chat/completions
+ * Auth: Bearer sk-kaya-*
+ */
+export const llmProxy = onRequest(
+  {
+    invoker: 'public',
+    timeoutSeconds: 300,
+    memory: '1GiB',
+  },
+  async (req, res) => {
+    const startTime = Date.now();
+
+    // Set CORS headers
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    if (req.method === 'OPTIONS') {
+      res.status(204).send('');
+      return;
+    }
+
+    // Parse path from URL (Firebase functions don't have native routing)
+    const path = req.path || '';
+
+    // GET /v1/models - List available models
+    if (req.method === 'GET' && path.endsWith('/models')) {
+      try {
+        const models = await getEnabledModels();
+        res.status(200).json({
+          object: 'list',
+          data: models.map((m) => ({
+            id: m.id,
+            object: 'model',
+            owned_by: m.ownedBy,
+            created: Math.floor(Date.now() / 1000),
+          })),
+        });
+      } catch (error) {
+        logger.error('Failed to list models', error as Error);
+        res.status(500).json({
+          error: { message: 'Failed to retrieve models', type: 'api_error', code: 'internal_error' },
+        });
+      }
+      return;
+    }
+
+    // POST /v1/chat/completions - Chat completion
+    if (req.method !== 'POST' || !path.endsWith('/chat/completions')) {
+      const errorResponse: LLMErrorResponse = {
+        error: {
+          message: 'Invalid endpoint. Use POST /v1/chat/completions',
+          type: 'invalid_request_error',
+          code: 'invalid_endpoint',
+        },
+      };
+      res.status(404).json(errorResponse);
+      return;
+    }
+
+    // API key authentication
+    let user: { uid: string; email?: string } | undefined;
+
+    // Manual auth check (since we can't use Express middleware directly)
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      res.status(401).json({
+        error: { message: 'Missing Authorization header', type: 'invalid_request_error', code: 'missing_api_key' },
+      });
+      return;
+    }
+
+    let apiKey: string;
+    if (authHeader.startsWith('Bearer ')) {
+      apiKey = authHeader.slice(7);
+    } else if (authHeader.startsWith('sk-kaya-')) {
+      apiKey = authHeader;
+    } else {
+      res.status(401).json({
+        error: { message: "Invalid API key format. Expected 'Bearer sk-kaya-...'", type: 'invalid_request_error', code: 'invalid_api_key' },
+      });
+      return;
+    }
+
+    // Verify API key
+    const keyResult = await verifyAPIKey(apiKey);
+    if (!keyResult.valid) {
+      res.status(401).json({
+        error: { message: keyResult.error || 'Invalid API key', type: 'invalid_request_error', code: 'invalid_api_key' },
+      });
+      return;
+    }
+    user = { uid: keyResult.uid!, email: keyResult.email };
+
+    // Validate request body
+    const body = req.body as Partial<ChatCompletionRequest>;
+
+    if (!body.messages || !Array.isArray(body.messages) || body.messages.length === 0) {
+      res.status(400).json({
+        error: { message: "Missing required parameter: 'messages' must be a non-empty array", type: 'invalid_request_error', code: 'missing_parameter' },
+      });
+      return;
+    }
+
+    // Validate messages format
+    for (const msg of body.messages) {
+      if (!msg.role || !msg.content) {
+        res.status(400).json({
+          error: { message: "Each message must have 'role' and 'content' properties", type: 'invalid_request_error', code: 'invalid_message_format' },
+        });
+        return;
+      }
+    }
+
+    // Get user's assigned model (admin-controlled)
+    let modelConfig;
+    try {
+      modelConfig = await getAssignedModel(user.uid);
+    } catch (error) {
+      logger.error('Failed to get model config', error as Error);
+      res.status(500).json({
+        error: { message: 'Failed to determine model configuration', type: 'api_error', code: 'internal_error' },
+      });
+      return;
+    }
+
+    // Start request tracking
+    const requestId = tracker.startRequest(user.uid, modelConfig.id);
+
+    try {
+      // Get provider and make request
+      const provider = getProvider(modelConfig.provider);
+      const requestBody: ChatCompletionRequest = {
+        model: modelConfig.id,
+        messages: body.messages,
+        max_tokens: body.max_tokens,
+        temperature: body.temperature,
+        top_p: body.top_p,
+        stop: body.stop,
+      };
+
+      const result = await provider.chat(requestBody, modelConfig);
+
+      // Calculate costs
+      const costs = calculateCost({
+        inputTokens: result.response.usage.prompt_tokens,
+        outputTokens: result.response.usage.completion_tokens,
+        inputPricePer1K: modelConfig.inputPricePer1K,
+        outputPricePer1K: modelConfig.outputPricePer1K,
+      });
+
+      // Complete tracking
+      tracker.completeRequest(requestId, {
+        resolvedProvider: modelConfig.provider,
+        resolvedModel: result.resolvedModel,
+        inputTokens: result.response.usage.prompt_tokens,
+        outputTokens: result.response.usage.completion_tokens,
+        inputCost: costs.inputCost,
+        outputCost: costs.outputCost,
+        totalCost: costs.totalCost,
+        status: 'success',
+      });
+
+      // Persist asynchronously
+      tracker.persistRequest(requestId).catch((err) => {
+        logger.error('Failed to persist request', err as Error, { requestId });
+      });
+
+      const durationMs = Date.now() - startTime;
+      logger.info('LLM proxy request successful', {
+        requestId,
+        model: modelConfig.id,
+        provider: modelConfig.provider,
+        latencyMs: durationMs,
+        inputTokens: result.response.usage.prompt_tokens,
+        outputTokens: result.response.usage.completion_tokens,
+      });
+
+      res.status(200).json(result.response);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      // Complete tracking with error
+      tracker.completeRequest(requestId, {
+        resolvedProvider: modelConfig.provider,
+        resolvedModel: modelConfig.backendModel,
+        inputTokens: 0,
+        outputTokens: 0,
+        inputCost: 0,
+        outputCost: 0,
+        totalCost: 0,
+        status: 'error',
+        errorMessage,
+      });
+
+      tracker.persistRequest(requestId).catch((err) => {
+        logger.error('Failed to persist error request', err as Error, { requestId });
+      });
+
+      const durationMs = Date.now() - startTime;
+      logger.error('LLM proxy request failed', error as Error, { requestId, latencyMs: durationMs });
+
+      res.status(500).json({
+        error: { message: 'An error occurred while processing your request', type: 'api_error', code: 'internal_error' },
+      });
+    }
+  }
+);
+
+// =============================================================================
+// API KEY MANAGEMENT ENDPOINTS
+// =============================================================================
+
+/**
+ * HTTP endpoint: Create API Key
+ * Requires Firebase auth (not API key)
+ *
+ * POST /apiKeysApi
+ * Body: { name: string }
+ * Returns: { key: string, keyId: string }
+ */
+export const apiKeysApi = onRequest({ invoker: 'public' }, async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  // Authenticate with Firebase token
+  const authReq = req as unknown as AuthenticatedRequest;
+  const authRes = res as unknown as AuthResponse;
+
+  await authenticateUserOnly(authReq, authRes, async () => {
+    const user = authReq.user;
+    if (!user) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+
+    try {
+      // POST - Create new API key
+      if (req.method === 'POST') {
+        const { name } = req.body as { name?: string };
+        if (!name || typeof name !== 'string') {
+          res.status(400).json({ error: 'name is required' });
+          return;
+        }
+
+        const result = await createAPIKey(user.uid, name);
+        res.status(201).json({
+          success: true,
+          key: result.key,
+          keyId: result.keyId,
+          message: 'API key created. Save this key - it will not be shown again.',
+        });
+        return;
+      }
+
+      // GET - List API keys
+      if (req.method === 'GET') {
+        const keys = await listAPIKeys(user.uid);
+        res.status(200).json({ keys });
+        return;
+      }
+
+      // DELETE - Revoke API key
+      if (req.method === 'DELETE') {
+        const keyId = req.query.keyId as string || req.body?.keyId;
+        if (!keyId) {
+          res.status(400).json({ error: 'keyId is required' });
+          return;
+        }
+
+        const success = await revokeAPIKey(user.uid, keyId);
+        if (!success) {
+          res.status(404).json({ error: 'API key not found or already revoked' });
+          return;
+        }
+
+        res.status(200).json({ success: true, message: 'API key revoked' });
+        return;
+      }
+
+      res.status(405).json({ error: 'Method not allowed' });
+    } catch (error) {
+      logger.error('API keys endpoint error', error as Error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+});
+
+/**
+ * HTTP endpoint: Admin - Set Model Assignment
+ * Allows admins to assign models to users or set client defaults
+ *
+ * POST /adminSetModelApi
+ * Body: { user_id?: string, client_id?: string, model_id: string }
+ */
+export const adminSetModelApi = onRequest({ invoker: 'public' }, async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+
+  // Authenticate (admin only)
+  const authReq = req as unknown as AuthenticatedRequest;
+  const authRes = res as unknown as AuthResponse;
+
+  await authenticateUserOnly(authReq, authRes, async () => {
+    try {
+      const user = authReq.user;
+      if (!user) {
+        res.status(401).json({ error: 'Not authenticated' });
+        return;
+      }
+
+      // Check if user is admin
+      const userDoc = await getDb().collection('users').doc(user.uid).get();
+      if (!userDoc.exists || userDoc.data()?.is_admin !== true) {
+        res.status(403).json({ error: 'Admin access required' });
+        return;
+      }
+
+      const { user_id, client_id, model_id } = req.body as {
+        user_id?: string;
+        client_id?: string;
+        model_id?: string;
+      };
+
+      if (!model_id) {
+        res.status(400).json({ error: 'model_id is required' });
+        return;
+      }
+
+      if (!user_id && !client_id) {
+        res.status(400).json({ error: 'Either user_id or client_id is required' });
+        return;
+      }
+
+      if (user_id) {
+        await setAssignedModel(user_id, model_id);
+        res.status(200).json({ success: true, message: `Model '${model_id}' assigned to user` });
+      } else if (client_id) {
+        await setClientDefaultModel(client_id, model_id);
+        res.status(200).json({ success: true, message: `Default model '${model_id}' set for client` });
+      }
+    } catch (error) {
+      logger.error('Admin set model error', error as Error);
+      const message = error instanceof Error ? error.message : 'Failed to set model';
+      res.status(400).json({ error: message });
+    }
+  });
+});

@@ -110,19 +110,8 @@ func runQuery(cmd *cobra.Command, args []string) error {
 		}
 		if strings.Contains(errStr, "billing_suspended") || strings.Contains(errStr, "billing suspended") {
 			fmt.Fprintln(os.Stderr, "")
-			fmt.Fprintln(os.Stderr, "⚠️  Your subscription has been suspended.")
+			fmt.Fprintln(os.Stderr, "Your subscription has been suspended.")
 			fmt.Fprintln(os.Stderr, "Please update your payment method or contact support.")
-			return nil
-		}
-		if strings.Contains(errStr, "api_key_required") || strings.Contains(errStr, "API key required") {
-			fmt.Fprintln(os.Stderr, "")
-			fmt.Fprintln(os.Stderr, "🔑 Anthropic API key required.")
-			fmt.Fprintln(os.Stderr, "")
-			fmt.Fprintln(os.Stderr, "AskKaya requires you to use your own Anthropic API key.")
-			fmt.Fprintln(os.Stderr, "Get your key at: https://console.anthropic.com/settings/keys")
-			fmt.Fprintln(os.Stderr, "")
-			fmt.Fprintln(os.Stderr, "Then set it with:")
-			fmt.Fprintln(os.Stderr, "  askkaya config set-api-key YOUR_KEY")
 			return nil
 		}
 		return fmt.Errorf("query failed: %w", err)

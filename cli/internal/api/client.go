@@ -152,9 +152,6 @@ func (c *APIClient) doQuery(question string, image *ImageInput, response *QueryR
 			if errorResp.Error == "billing_suspended" {
 				return fmt.Errorf("billing suspended: %s", errorResp.Message)
 			}
-			if errorResp.Error == "api_key_required" {
-				return fmt.Errorf("api_key_required: %s", errorResp.Message)
-			}
 		}
 		return fmt.Errorf("forbidden: %d", resp.StatusCode)
 	}

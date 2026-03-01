@@ -24,14 +24,8 @@ function getDefaultAnthropic(): Anthropic {
   return _defaultAnthropic;
 }
 
-// Get Anthropic client - uses custom API key if provided, otherwise default
-function getAnthropic(customApiKey?: string): Anthropic {
-  if (customApiKey) {
-    return new Anthropic({
-      apiKey: customApiKey,
-      baseURL: process.env['ANTHROPIC_BASE_URL'],
-    });
-  }
+// Get Anthropic client - always uses default key
+function getAnthropic(): Anthropic {
   return getDefaultAnthropic();
 }
 const MAX_TOKENS = 1024;
@@ -55,15 +49,13 @@ export interface ImageInput {
  * @param context - Retrieved context from RAG
  * @param clientName - Client name for personalization
  * @param image - Optional image input for vision queries
- * @param anthropicApiKey - Optional custom API key (uses default if not provided)
  * @returns Generated response with confidence score
  */
 export async function generateResponse(
   query: string,
   context: string,
   clientName: string,
-  image?: ImageInput,
-  anthropicApiKey?: string
+  image?: ImageInput
 ): Promise<GenerationResult> {
   const systemPrompt = `You are a helpful customer support assistant for ${clientName}.
 Your job is to answer questions based on the provided knowledge base context.
@@ -110,7 +102,7 @@ Please provide your answer, confidence score, and reasoning.`;
     : userPrompt;
 
   try {
-    const response = await getAnthropic(anthropicApiKey).messages.create({
+    const response = await getAnthropic().messages.create({
       model: MODEL,
       max_tokens: MAX_TOKENS,
       system: systemPrompt,

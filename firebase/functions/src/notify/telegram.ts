@@ -41,7 +41,7 @@ export function formatEscalationAlert(escalation: Escalation): string {
 
 *Context Tags:* ${tags}
 
-_Reply to this message to answer\\. Type DISMISS to close without saving\\._`;
+_Reply to this message to answer\\. Prefixes: PERSONAL: \\(user only\\), GLOBAL: \\(all clients\\), or no prefix \\(this client\\)\\. Type DISMISS to close\\._`;
 }
 
 /**
@@ -135,6 +135,8 @@ export async function handleTelegramUpdate(
 
   const isDismiss = answer.toUpperCase() === 'DISMISS';
   const isGlobal = answer.toUpperCase().startsWith('GLOBAL:');
+  const isPersonal = answer.toUpperCase().startsWith('PERSONAL:');
+  const isClient = answer.toUpperCase().startsWith('CLIENT:');
   const chatId = message.chat.id.toString();
 
   if (isDismiss) {
@@ -151,15 +153,18 @@ export async function handleTelegramUpdate(
     };
   }
 
-  // Extract actual answer (remove GLOBAL: prefix if present)
-  const actualAnswer = isGlobal ? answer.substring(7).trim() : answer;
+  // Extract actual answer (remove prefix if present)
+  let actualAnswer = answer;
+  if (isGlobal) actualAnswer = answer.substring(7).trim();
+  else if (isPersonal) actualAnswer = answer.substring(9).trim();
+  else if (isClient) actualAnswer = answer.substring(7).trim();
 
   // Normal flow: answer ticket + auto-learn
   await answerTicket(escalationId, actualAnswer);
 
-  const kbArticleId = await autoLearn(escalationId, actualAnswer, isGlobal);
+  const kbArticleId = await autoLearn(escalationId, actualAnswer, { isGlobal, isPersonal });
 
-  const scope = isGlobal ? 'global' : 'client\\-specific';
+  const scope = isGlobal ? 'global' : isPersonal ? 'personal' : 'client\\-specific';
   await sendMessage(
     chatId,
     `✅ Ticket answered and added to KB \\(${scope}\\)\\.`
@@ -208,9 +213,15 @@ async function dismissTicket(escalationId: string): Promise<void> {
  * Auto-learn from answer: create KB article with pending_embedding status
  * The onKBArticleCreated trigger will generate the embedding
  *
- * @param isGlobal - If true, article is visible to all clients. If false, only to original client.
+ * @param scope.isGlobal - If true, article is visible to all clients
+ * @param scope.isPersonal - If true, article is visible only to the original user (owner_id)
+ * Default (neither): article is visible to the client organization (client_id)
  */
-async function autoLearn(escalationId: string, answer: string, isGlobal: boolean = false): Promise<string> {
+async function autoLearn(
+  escalationId: string,
+  answer: string,
+  scope: { isGlobal?: boolean; isPersonal?: boolean } = {}
+): Promise<string> {
   ensureFirebaseInit();
   const { getFirestore, FieldValue } = await import('firebase-admin/firestore');
   const db = getFirestore();
@@ -225,10 +236,22 @@ async function autoLearn(escalationId: string, answer: string, isGlobal: boolean
 
   const query = escalation.query || '';
   const clientId = escalation.clientId;
+  const userId = escalation.userId;
 
   // Create KB article
-  // Use GLOBAL: prefix to make answer visible to all clients
   const articleTitle = `FAQ: ${query.length > 50 ? query.substring(0, 47) + '...' : query}`;
+
+  // Determine access control based on scope
+  let articleAccess: { is_global: boolean; client_id: string | null; owner_id: string | null };
+
+  if (scope.isGlobal) {
+    articleAccess = { is_global: true, client_id: null, owner_id: null };
+  } else if (scope.isPersonal) {
+    articleAccess = { is_global: false, client_id: null, owner_id: userId || null };
+  } else {
+    // Default: client-level
+    articleAccess = { is_global: false, client_id: clientId || null, owner_id: null };
+  }
 
   const kbArticle = {
     title: articleTitle,
@@ -238,8 +261,7 @@ async function autoLearn(escalationId: string, answer: string, isGlobal: boolean
     source_id: escalationId,
     lookup_key: `escalation:${escalationId}`,
     tags: ['escalation', 'faq'],
-    is_global: isGlobal,
-    client_id: isGlobal ? null : (clientId || null),
+    ...articleAccess,
     status: 'pending_embedding',  // Trigger will generate embedding
     learned_from_escalation: escalationId,
     created_at: FieldValue.serverTimestamp(),
