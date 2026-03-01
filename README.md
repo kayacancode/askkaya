@@ -37,13 +37,44 @@ askkaya keys create "My Script"
 # Returns: sk-kaya-...
 ```
 
-Use it with the OpenAI-compatible endpoint:
+Use it with the OpenAI-compatible API at `api.askkaya.com`:
 
 ```bash
-curl -X POST https://us-central1-askkaya-47cef.cloudfunctions.net/llmProxy/v1/chat/completions \
-  -H "Authorization: Bearer sk-kaya-..." \
+curl -X POST https://api.askkaya.com/v1/chat/completions \
+  -H "Authorization: sk-kaya-..." \
   -H "Content-Type: application/json" \
   -d '{"model":"claude-sonnet-4-5","messages":[{"role":"user","content":"Hello"}]}'
+```
+
+**Python (OpenAI SDK):**
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="sk-kaya-...",
+    base_url="https://api.askkaya.com/v1"
+)
+
+response = client.chat.completions.create(
+    model="claude-sonnet-4-5",
+    messages=[{"role": "user", "content": "Hello"}]
+)
+print(response.choices[0].message.content)
+```
+
+**Node.js:**
+```javascript
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  apiKey: 'sk-kaya-...',
+  baseURL: 'https://api.askkaya.com/v1'
+});
+
+const response = await client.chat.completions.create({
+  model: 'claude-sonnet-4-5',
+  messages: [{ role: 'user', content: 'Hello' }]
+});
 ```
 
 ### Connect Your AI Agent (Recommended)
@@ -177,6 +208,8 @@ askkaya invite generate                                   # Generate invite code
 
 ## LLM Proxy
 
+**Base URL:** `https://api.askkaya.com/v1`
+
 AskKaya routes all LLM requests through a centralized proxy with:
 
 - **No API key distribution** - Users never see provider API keys
@@ -184,6 +217,14 @@ AskKaya routes all LLM requests through a centralized proxy with:
 - **Multi-provider support** - Route to different models per user
 - **Usage tracking** - Token counts and cost attribution per request
 - **OpenAI-compatible API** - Standard `/v1/chat/completions` endpoint
+
+### Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/v1/chat/completions` | POST | Chat completion (OpenAI-compatible) |
+| `/v1/models` | GET | List available models |
+| `/health` | GET | Health check |
 
 ### Available Models
 
