@@ -6,15 +6,20 @@
 
 import OpenAI from 'openai';
 
+// For embeddings via OpenAI provider endpoint
 const EMBEDDING_MODEL = 'text-embedding-3-small';
 
-// Lazy-initialize OpenAI client to allow env vars to load first
+// Lazy-initialize OpenAI client with Cloudflare Unified Billing
 let _openai: OpenAI | null = null;
 function getOpenAI(): OpenAI {
   if (!_openai) {
+    // Use OpenAI provider-specific endpoint with CF token as API key
+    const baseURL = 'https://gateway.ai.cloudflare.com/v1/0c3240509aa27a7e737544ef66423171/kayaclaw/openai';
+    const cfToken = process.env['CF_AIG_TOKEN'] || '';
+
     _openai = new OpenAI({
-      apiKey: process.env['OPENAI_API_KEY'],
-      baseURL: process.env['OPENAI_BASE_URL'],
+      apiKey: cfToken,
+      baseURL: baseURL,
     });
   }
   return _openai;

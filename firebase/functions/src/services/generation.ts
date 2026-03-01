@@ -1,33 +1,35 @@
 /**
  * Generation Service
- * 
+ *
  * LLM-based response generation with confidence scoring, PII redaction, and escalation logic
+ * Uses Cloudflare AI Gateway Unified API for billing
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 
 // Confidence Thresholds
 const ESCALATION_THRESHOLD = 0.65;  // Below this, escalate to human
 const CRITICAL_THRESHOLD = 0.4;     // Below this, refuse to answer
 
-const MODEL = 'claude-sonnet-4-5-20250929';
+// Model: GPT-4o-mini via OpenAI provider endpoint (Unified Billing)
+const MODEL = 'gpt-4o-mini';
 
-// Default Anthropic client using env vars (for admin/Kaya's account)
-let _defaultAnthropic: Anthropic | null = null;
-function getDefaultAnthropic(): Anthropic {
-  if (!_defaultAnthropic) {
-    _defaultAnthropic = new Anthropic({
-      apiKey: process.env['ANTHROPIC_API_KEY'],
-      baseURL: process.env['ANTHROPIC_BASE_URL'],
+// OpenAI-compatible client for Cloudflare AI Gateway (OpenAI provider endpoint)
+let _client: OpenAI | null = null;
+function getClient(): OpenAI {
+  if (!_client) {
+    // Use OpenAI provider-specific endpoint with CF token as API key
+    const baseURL = 'https://gateway.ai.cloudflare.com/v1/0c3240509aa27a7e737544ef66423171/kayaclaw/openai';
+    const cfToken = process.env['CF_AIG_TOKEN'] || '';
+
+    _client = new OpenAI({
+      apiKey: cfToken,
+      baseURL: baseURL,
     });
   }
-  return _defaultAnthropic;
+  return _client;
 }
 
-// Get Anthropic client - always uses default key
-function getAnthropic(): Anthropic {
-  return getDefaultAnthropic();
-}
 const MAX_TOKENS = 1024;
 
 export interface GenerationResult {
@@ -84,29 +86,32 @@ Question: ${query}
 Please provide your answer, confidence score, and reasoning.`;
 
   // Build message content - text only or text + image
-  const messageContent: Anthropic.MessageParam['content'] = image
+  type MessageContent = string | Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }>;
+
+  const messageContent: MessageContent = image
     ? [
         {
-          type: 'image',
-          source: {
-            type: 'base64',
-            media_type: image.mediaType,
-            data: image.data,
+          type: 'image_url' as const,
+          image_url: {
+            url: `data:${image.mediaType};base64,${image.data}`,
           },
         },
         {
-          type: 'text',
+          type: 'text' as const,
           text: userPrompt,
         },
       ]
     : userPrompt;
 
   try {
-    const response = await getAnthropic().messages.create({
+    const response = await getClient().chat.completions.create({
       model: MODEL,
       max_tokens: MAX_TOKENS,
-      system: systemPrompt,
       messages: [
+        {
+          role: 'system',
+          content: systemPrompt,
+        },
         {
           role: 'user',
           content: messageContent,
@@ -115,12 +120,12 @@ Please provide your answer, confidence score, and reasoning.`;
     });
 
     // Extract text from response
-    const content = response.content[0];
-    if (content?.type !== 'text') {
-      throw new Error('Unexpected response format from Claude');
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('No content in response');
     }
 
-    const fullText = content.text;
+    const fullText = content;
 
     // Parse structured response
     const answerMatch = fullText.match(/ANSWER:\s*([\s\S]*?)(?=CONFIDENCE:)/);
