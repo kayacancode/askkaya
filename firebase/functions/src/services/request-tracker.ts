@@ -10,6 +10,16 @@ import { randomUUID } from 'node:crypto';
 import * as admin from 'firebase-admin';
 import * as logger from '../utils/logger';
 
+/**
+ * Lazy initialize Firebase Admin and Firestore
+ */
+function getDb(): admin.firestore.Firestore {
+  if (!admin.apps.length) {
+    admin.initializeApp();
+  }
+  return admin.firestore();
+}
+
 interface PendingRequest {
   uid: string;
   model: string;
@@ -115,7 +125,7 @@ export class RequestTracker {
       return;
     }
 
-    const db = admin.firestore();
+    const db = getDb();
 
     try {
       // Log the request and update user tokens in parallel

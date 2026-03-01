@@ -10,6 +10,16 @@ import * as admin from 'firebase-admin';
 import * as logger from '../utils/logger';
 
 /**
+ * Lazy initialize Firebase Admin and Firestore
+ */
+function getDb(): admin.firestore.Firestore {
+  if (!admin.apps.length) {
+    admin.initializeApp();
+  }
+  return admin.firestore();
+}
+
+/**
  * Model configuration stored in Firestore
  * Collection: llmConfig, Document: "models"
  */
@@ -121,7 +131,7 @@ export async function loadModelConfigs(): Promise<Map<string, ModelConfig>> {
     return modelCache;
   }
 
-  const db = admin.firestore();
+  const db = getDb();
   const configDoc = await db.collection('llmConfig').doc('models').get();
 
   if (!configDoc.exists) {
@@ -150,7 +160,7 @@ export async function loadModelConfigs(): Promise<Map<string, ModelConfig>> {
  * Seed Firestore with default model configurations
  */
 async function seedDefaultModels(): Promise<void> {
-  const db = admin.firestore();
+  const db = getDb();
   await db.collection('llmConfig').doc('models').set({
     models: DEFAULT_MODELS,
     updatedAt: new Date().toISOString(),
@@ -207,7 +217,7 @@ export function clearModelCache(): void {
  * Checks user.assignedModel, then client.defaultModel, then falls back to default
  */
 export async function getAssignedModel(uid: string): Promise<ModelConfig> {
-  const db = admin.firestore();
+  const db = getDb();
 
   // Get user document
   const userDoc = await db.collection('users').doc(uid).get();
@@ -251,7 +261,7 @@ export async function getAssignedModel(uid: string): Promise<ModelConfig> {
  * Set the assigned model for a user (admin function)
  */
 export async function setAssignedModel(uid: string, modelId: string): Promise<void> {
-  const db = admin.firestore();
+  const db = getDb();
 
   // Verify model exists
   const config = await getModelConfig(modelId);
@@ -271,7 +281,7 @@ export async function setAssignedModel(uid: string, modelId: string): Promise<vo
  * Set the default model for a client (admin function)
  */
 export async function setClientDefaultModel(clientId: string, modelId: string): Promise<void> {
-  const db = admin.firestore();
+  const db = getDb();
 
   // Verify model exists
   const config = await getModelConfig(modelId);

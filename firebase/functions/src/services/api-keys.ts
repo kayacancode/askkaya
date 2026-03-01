@@ -12,6 +12,16 @@ import * as admin from 'firebase-admin';
 import * as logger from '../utils/logger';
 
 /**
+ * Lazy initialize Firebase Admin and Firestore
+ */
+function getDb(): admin.firestore.Firestore {
+  if (!admin.apps.length) {
+    admin.initializeApp();
+  }
+  return admin.firestore();
+}
+
+/**
  * API key prefix for all AskKaya keys
  * Format: sk-kaya-{32 hex chars}
  */
@@ -66,7 +76,7 @@ interface CreateKeyResult {
  * @returns The full API key (shown only once) and document ID
  */
 export async function createAPIKey(uid: string, name: string): Promise<CreateKeyResult> {
-  const db = admin.firestore();
+  const db = getDb();
   const apiKey = generateAPIKey();
   const keyHash = hashAPIKey(apiKey);
   const keyPrefix = getKeyPrefix(apiKey);
@@ -113,7 +123,7 @@ export async function verifyAPIKey(apiKey: string): Promise<VerifyKeyResult> {
     return { valid: false, error: 'Invalid API key format' };
   }
 
-  const db = admin.firestore();
+  const db = getDb();
   const keyHash = hashAPIKey(apiKey);
 
   try {
@@ -176,7 +186,7 @@ export async function verifyAPIKey(apiKey: string): Promise<VerifyKeyResult> {
  * Lists all API keys for a user (without the actual key values)
  */
 export async function listAPIKeys(uid: string) {
-  const db = admin.firestore();
+  const db = getDb();
 
   const querySnapshot = await db
     .collection('users')
@@ -205,7 +215,7 @@ export async function listAPIKeys(uid: string) {
  * @returns true if successful, false if key not found or already revoked
  */
 export async function revokeAPIKey(uid: string, keyId: string): Promise<boolean> {
-  const db = admin.firestore();
+  const db = getDb();
 
   const keyRef = db.collection('users').doc(uid).collection('apiKeys').doc(keyId);
   const keyDoc = await keyRef.get();
