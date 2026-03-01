@@ -7,6 +7,7 @@
 import * as admin from 'firebase-admin';
 import { retrieveRelevantArticles, formatRetrievedContext, extractSources } from '../services/rag';
 import { generateResponse, type ImageInput } from '../services/generation';
+import { getAssignedModel } from '../services/model-config';
 import * as logger from '../utils/logger';
 
 export interface QueryRequest {
@@ -143,17 +144,28 @@ export async function processQuery(
     
     // Step 2: Format context for LLM
     const context = formatRetrievedContext(ragResults);
-    
-    // Step 3: Generate response with LLM (with optional image for vision)
-    const generation = await generateResponse(question, context, clientName, image);
+
+    // Step 3: Get user's assigned model (or client/global default)
+    const modelConfig = userId ? await getAssignedModel(userId) : undefined;
+    if (modelConfig) {
+      logger.debug('Using assigned model', {
+        clientId,
+        userId,
+        modelId: modelConfig.id,
+        provider: modelConfig.provider,
+      });
+    }
+
+    // Step 4: Generate response with LLM (with optional image for vision)
+    const generation = await generateResponse(question, context, clientName, image, modelConfig);
     
     logger.debug('Response generated', {
       clientId,
       confidence: generation.confidence,
       shouldEscalate: generation.shouldEscalate,
     });
-    
-    // Step 4: Handle escalation if needed
+
+    // Step 5: Handle escalation if needed
     let escalated = false;
     if (generation.shouldEscalate) {
       escalated = true;

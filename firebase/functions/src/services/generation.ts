@@ -2,32 +2,70 @@
  * Generation Service
  *
  * LLM-based response generation with confidence scoring, PII redaction, and escalation logic
- * Uses Cloudflare AI Gateway Unified API for billing
+ * Uses Cloudflare AI Gateway for routing to multiple providers
  */
 
 import OpenAI from 'openai';
+import { type ModelConfig } from './model-config';
 
 // Confidence Thresholds
 const ESCALATION_THRESHOLD = 0.65;  // Below this, escalate to human
 const CRITICAL_THRESHOLD = 0.4;     // Below this, refuse to answer
 
-// Model: GPT-4o-mini via OpenAI provider endpoint (Unified Billing)
-const MODEL = 'gpt-4o-mini';
+// Cloudflare AI Gateway base
+const CF_GATEWAY_BASE = 'https://gateway.ai.cloudflare.com/v1/0c3240509aa27a7e737544ef66423171/kayaclaw';
 
-// OpenAI-compatible client for Cloudflare AI Gateway (OpenAI provider endpoint)
-let _client: OpenAI | null = null;
-function getClient(): OpenAI {
-  if (!_client) {
-    // Use OpenAI provider-specific endpoint with CF token as API key
-    const baseURL = 'https://gateway.ai.cloudflare.com/v1/0c3240509aa27a7e737544ef66423171/kayaclaw/openai';
-    const cfToken = process.env['CF_AIG_TOKEN'] || '';
+// Provider-specific clients (cached)
+const clients: Map<string, OpenAI> = new Map();
 
-    _client = new OpenAI({
-      apiKey: cfToken,
-      baseURL: baseURL,
-    });
+/**
+ * Get or create an OpenAI-compatible client for a provider
+ */
+function getClientForProvider(provider: 'openai' | 'anthropic' | 'openrouter'): OpenAI {
+  if (clients.has(provider)) {
+    return clients.get(provider)!;
   }
-  return _client;
+
+  const cfToken = process.env['CF_AIG_TOKEN'] || '';
+
+  // Provider-specific endpoints via Cloudflare AI Gateway
+  const baseURLs: Record<string, string> = {
+    openai: `${CF_GATEWAY_BASE}/openai`,
+    anthropic: `${CF_GATEWAY_BASE}/openai`, // Fallback to OpenAI (Anthropic needs more credits)
+    openrouter: `${CF_GATEWAY_BASE}/openrouter`,
+  };
+
+  const client = new OpenAI({
+    apiKey: cfToken,
+    baseURL: baseURLs[provider],
+    defaultHeaders: provider === 'openrouter' ? {
+      'HTTP-Referer': 'https://askkaya.com',
+      'X-Title': 'AskKaya',
+    } : undefined,
+  });
+
+  clients.set(provider, client);
+  return client;
+}
+
+/**
+ * Get the model ID to send to the provider
+ * Handles fallback for providers that aren't fully configured
+ */
+function getEffectiveModel(modelConfig: ModelConfig): { provider: 'openai' | 'anthropic' | 'openrouter'; model: string } {
+  // Anthropic currently fails with credit issues - fall back to OpenAI
+  if (modelConfig.provider === 'anthropic') {
+    console.warn(`Anthropic model ${modelConfig.id} requested but unavailable (credit issue), falling back to gpt-4o-mini`);
+    return { provider: 'openai', model: 'gpt-4o-mini' };
+  }
+
+  // OpenRouter needs separate API key setup - fall back to OpenAI for now
+  if (modelConfig.provider === 'openrouter') {
+    console.warn(`OpenRouter model ${modelConfig.id} requested but auth not configured, falling back to gpt-4o-mini`);
+    return { provider: 'openai', model: 'gpt-4o-mini' };
+  }
+
+  return { provider: modelConfig.provider, model: modelConfig.backendModel };
 }
 
 const MAX_TOKENS = 1024;
@@ -51,14 +89,22 @@ export interface ImageInput {
  * @param context - Retrieved context from RAG
  * @param clientName - Client name for personalization
  * @param image - Optional image input for vision queries
+ * @param modelConfig - Optional model config for per-user routing
  * @returns Generated response with confidence score
  */
 export async function generateResponse(
   query: string,
   context: string,
   clientName: string,
-  image?: ImageInput
+  image?: ImageInput,
+  modelConfig?: ModelConfig
 ): Promise<GenerationResult> {
+  // Get effective model (with fallback for unavailable providers)
+  const { provider, model } = modelConfig
+    ? getEffectiveModel(modelConfig)
+    : { provider: 'openai' as const, model: 'gpt-4o-mini' };
+
+  const client = getClientForProvider(provider);
   const systemPrompt = `You are a helpful customer support assistant for ${clientName}.
 Your job is to answer questions based on the provided knowledge base context.
 
@@ -104,8 +150,8 @@ Please provide your answer, confidence score, and reasoning.`;
     : userPrompt;
 
   try {
-    const response = await getClient().chat.completions.create({
-      model: MODEL,
+    const response = await client.chat.completions.create({
+      model: model,
       max_tokens: MAX_TOKENS,
       messages: [
         {
