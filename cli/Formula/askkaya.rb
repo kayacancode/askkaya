@@ -1,15 +1,15 @@
 class Askkaya < Formula
   desc "AskKaya - Full-stack client support platform CLI"
   homepage "https://github.com/kayacancode/askkaya"
-  version "0.2.7"
+  version "0.3.0"
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/kayacancode/askkaya/releases/download/v0.2.7/askkaya-darwin-arm64"
-      sha256 "6a834e6226ff16d41b76137caf6b786d94d0c214e546f05ac496d65cad684d20"
+      url "https://github.com/kayacancode/askkaya/releases/download/v0.3.0/askkaya-darwin-arm64"
+      sha256 "31add5203310d4213c877c2ea2fad02eb83a7bf48a3d1ddb7210f54e54085d8d"
     else
-      url "https://github.com/kayacancode/askkaya/releases/download/v0.2.7/askkaya-darwin-amd64"
-      sha256 "5aa000123c7a38bb3c40d495cfbc686ceab9beb47d9ea3b8a2ee32fc171519cb"
+      url "https://github.com/kayacancode/askkaya/releases/download/v0.3.0/askkaya-darwin-amd64"
+      sha256 "e812e0559e28ba277453551ac88393ccf57917334515719a61175bd3e67f770b"
     end
   end
 
