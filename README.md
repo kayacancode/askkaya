@@ -83,7 +83,7 @@ Add AskKaya as an MCP server so your AI agent can automatically query the knowle
 
 **Claude Code:**
 ```bash
-claude mcp add askkaya --transport http https://us-central1-askkaya-47cef.cloudfunctions.net/mcpServer
+claude mcp add askkaya --transport http https://api.askkaya.com/mcp
 ```
 
 **OpenClaw / Other MCP Clients:**
@@ -92,7 +92,7 @@ claude mcp add askkaya --transport http https://us-central1-askkaya-47cef.cloudf
   "mcpServers": {
     "askkaya": {
       "transport": "http",
-      "url": "https://us-central1-askkaya-47cef.cloudfunctions.net/mcpServer"
+      "url": "https://api.askkaya.com/mcp"
     }
   }
 }
