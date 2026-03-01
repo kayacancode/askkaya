@@ -1184,6 +1184,7 @@ export const llmProxy = onRequest(
     invoker: 'public',
     timeoutSeconds: 300,
     memory: '1GiB',
+    secrets: ['OPENROUTER_API_KEY'],
   },
   async (req, res) => {
     const startTime = Date.now();
