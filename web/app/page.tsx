@@ -105,9 +105,6 @@ curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/insta
             <a href="#get-started" className="btn-primary">
               Request Access
             </a>
-            <a href="https://github.com/kayacancode/askkaya" className="btn-secondary">
-              View on GitHub
-            </a>
           </div>
 
           <div className="stats-bar">
@@ -415,7 +412,6 @@ curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/insta
               <ul className="footer-links">
                 <li><Link href="#features">Features</Link></li>
                 <li><Link href="#how-it-works">How It Works</Link></li>
-                <li><a href="https://github.com/kayacancode/askkaya">Documentation</a></li>
               </ul>
             </div>
 
@@ -423,7 +419,6 @@ curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/insta
               <h4 className="footer-heading">Connect</h4>
               <ul className="footer-links">
                 <li><a href="mailto:kaya@forever22studios.com">Contact</a></li>
-                <li><a href="https://github.com/kayacancode/askkaya">GitHub</a></li>
               </ul>
             </div>
           </div>
