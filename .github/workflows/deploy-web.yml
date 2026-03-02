@@ -26,7 +26,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
-        working-directory: web
 
       - name: Build
         run: pnpm run build
