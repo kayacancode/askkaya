@@ -92,12 +92,12 @@ curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/insta
           </div>
 
           <h1 className="hero-title">
-            <span className="hero-title-line">Your</span>
-            <span className="hero-title-line hero-title-accent">Digital Twin</span>
+            <span className="hero-title-line">Have a question?</span>
+            <span className="hero-title-line hero-title-accent">Ask Kaya</span>
           </h1>
 
           <p className="hero-subtitle">
-            AskKaya answers questions the way I would. It learns from every interaction.
+            AskKaya answers your questions the way I would. It learns from every interaction.
             If it doesn&apos;t know, it asks me—and remembers for next time.
           </p>
 
@@ -376,26 +376,18 @@ curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/insta
       <section id="get-started" className="cta-section">
         <div className="cta-content">
           <h2 className="cta-title">
-            Ready to build your <span className="text-gradient">digital twin</span>?
+            Want to talk to <span className="text-gradient">my digital twin</span>?
           </h2>
           <p className="cta-subtitle">
             AskKaya is currently invite-only during pre-launch.
-            Request access to start building your personal knowledge base.
+            Request access to get answers from my knowledge base anytime.
           </p>
 
-          <div className="cta-form">
-            <input
-              type="email"
-              className="cta-input"
-              placeholder="your@email.com"
-            />
-            <a href="mailto:kaya@forever22studios.com" className="btn-primary">
-              Request Invite
-            </a>
-          </div>
+          <a href="mailto:kaya@forever22studios.com" className="btn-primary" style={{ display: 'inline-flex', fontSize: '1rem', padding: '1rem 2rem' }}>
+            Request Invite
+          </a>
 
           <p className="mt-6 text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Or email directly:{' '}
             <a href="mailto:kaya@forever22studios.com" style={{ color: 'var(--amber)' }} className="hover:underline">
               kaya@forever22studios.com
             </a>
@@ -413,7 +405,7 @@ curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/insta
                 <span className="logo-kaya">Kaya</span>
               </div>
               <p style={{ color: 'var(--text-secondary)', maxWidth: '24rem' }}>
-                Your digital twin that learns from every interaction.
+                My digital twin that learns from every interaction.
                 Built for the age of AI agents.
               </p>
             </div>
