@@ -29,9 +29,10 @@ function getClientForProvider(provider: 'openai' | 'anthropic' | 'openrouter'): 
   const cfToken = process.env['CF_AIG_TOKEN'] || '';
 
   // Provider-specific endpoints via Cloudflare AI Gateway
+  // All providers use CF token - provider keys are stored in Cloudflare dashboard
   const baseURLs: Record<string, string> = {
     openai: `${CF_GATEWAY_BASE}/openai`,
-    anthropic: `${CF_GATEWAY_BASE}/openai`, // Fallback to OpenAI (Anthropic needs more credits)
+    anthropic: `${CF_GATEWAY_BASE}/anthropic`,
     openrouter: `${CF_GATEWAY_BASE}/openrouter`,
   };
 
@@ -56,12 +57,6 @@ function getEffectiveModel(modelConfig: ModelConfig): { provider: 'openai' | 'an
   // Anthropic currently fails with credit issues - fall back to OpenAI
   if (modelConfig.provider === 'anthropic') {
     console.warn(`Anthropic model ${modelConfig.id} requested but unavailable (credit issue), falling back to gpt-4o-mini`);
-    return { provider: 'openai', model: 'gpt-4o-mini' };
-  }
-
-  // OpenRouter needs separate API key setup - fall back to OpenAI for now
-  if (modelConfig.provider === 'openrouter') {
-    console.warn(`OpenRouter model ${modelConfig.id} requested but auth not configured, falling back to gpt-4o-mini`);
     return { provider: 'openai', model: 'gpt-4o-mini' };
   }
 
