@@ -1,18 +1,87 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import './marketing.css'
+
+// Call the demo API to get real KB responses
+async function queryAskKaya(question: string): Promise<string> {
+  try {
+    const response = await fetch('/api/demo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question }),
+    })
+
+    const data = await response.json()
+    return data.text || data.error || "Something went wrong. Please try again."
+  } catch (error) {
+    console.error('Demo query error:', error)
+    return "Couldn't connect to AskKaya. Please try again or request full access."
+  }
+}
 
 export default function LandingPage() {
   const [activeTab, setActiveTab] = useState<'cli' | 'mcp' | 'skill'>('cli')
   const [scrolled, setScrolled] = useState(false)
+  const [messages, setMessages] = useState<{ role: 'user' | 'tool' | 'assistant', text: string, toolName?: string }[]>([])
+  const [input, setInput] = useState('')
+  const [isTyping, setIsTyping] = useState(false)
+  const [toolCallPhase, setToolCallPhase] = useState<'idle' | 'calling' | 'responding'>('idle')
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const isFirstRender = useRef(true)
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50)
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  useEffect(() => {
+    // Don't scroll on first render
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+    // Scroll only within the chat container
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+    }
+  }, [messages])
+
+  const handleSend = async () => {
+    if (!input.trim()) return
+
+    const userMessage = input.trim()
+    setMessages(prev => [...prev, { role: 'user', text: userMessage }])
+    setInput('')
+    setToolCallPhase('calling')
+
+    // Phase 1: Show tool call
+    setTimeout(async () => {
+      setMessages(prev => [...prev, {
+        role: 'tool',
+        text: userMessage,
+        toolName: 'ask_kaya'
+      }])
+      setToolCallPhase('responding')
+
+      // Phase 2: Get real response from API
+      const response = await queryAskKaya(userMessage)
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        text: response
+      }])
+      setToolCallPhase('idle')
+    }, 400 + Math.random() * 300)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
+  }
 
   const codeExamples = {
     cli: `# Install AskKaya
@@ -58,9 +127,9 @@ curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/insta
           </Link>
 
           <div className="nav-links">
+            <Link href="#try-it" className="nav-link">Try It</Link>
             <Link href="#features" className="nav-link">Features</Link>
             <Link href="#how-it-works" className="nav-link">How It Works</Link>
-            <Link href="#integrate" className="nav-link">Integrate</Link>
           </div>
 
           <div className="nav-actions">
@@ -97,13 +166,14 @@ curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/insta
           </h1>
 
           <p className="hero-subtitle">
-            AskKaya answers your questions the way I would. It learns from every interaction.
-            If it doesn&apos;t know, it asks me—and remembers for next time.
+            When you&apos;re chatting with your AI and have a question for me, it asks Kaya—pulling
+            from my universal knowledge base to answer. If it doesn&apos;t know, it escalates to me
+            and learns, building your profile over time.
           </p>
 
           <div className="hero-actions">
-            <a href="#get-started" className="btn-primary">
-              Request Access
+            <a href="#try-it" className="btn-primary">
+              Try It Out
             </a>
           </div>
 
@@ -120,6 +190,113 @@ curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/insta
               <span className="stat-value">CLI</span>
               <span className="stat-label">First</span>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Try It Section */}
+      <section id="try-it" className="try-section">
+        <div className="try-content">
+          <span className="section-label">Try It Out</span>
+          <h2 className="section-title">
+            Ask me anything
+          </h2>
+          <p className="try-subtitle">
+            This is a demo with limited knowledge. Request full access for the complete experience.
+          </p>
+
+          <div className="demo-chat">
+            <div className="demo-chat-header">
+              <div className="demo-chat-avatar">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z" />
+                  <path d="M12 6v6l4 2" />
+                </svg>
+              </div>
+              <div className="demo-chat-title">
+                <span className="demo-chat-name">Your AI Assistant</span>
+                <span className="demo-chat-status">with AskKaya MCP</span>
+              </div>
+            </div>
+
+            <div className="demo-chat-messages" ref={messagesContainerRef}>
+              {messages.length === 0 && (
+                <div className="demo-empty">
+                  <p>Ask a question to see how your AI calls AskKaya</p>
+                  <div className="demo-suggestions">
+                    <button onClick={() => { setInput('Who is Kaya?'); }}>Who is Kaya?</button>
+                    <button onClick={() => { setInput('How do I set up OpenClaw?'); }}>Set up OpenClaw</button>
+                  </div>
+                </div>
+              )}
+              {messages.map((msg, i) => (
+                <div key={i} className={`demo-message ${msg.role}`}>
+                  {msg.role === 'user' && (
+                    <div className="demo-message-bubble user-bubble">
+                      {msg.text}
+                    </div>
+                  )}
+                  {msg.role === 'tool' && (
+                    <div className="demo-tool-call">
+                      <div className="demo-tool-header">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                        </svg>
+                        <span>Calling <code>{msg.toolName}</code></span>
+                      </div>
+                      <div className="demo-tool-params">
+                        <code>{`{ "question": "${msg.text}" }`}</code>
+                      </div>
+                    </div>
+                  )}
+                  {msg.role === 'assistant' && (
+                    <div className="demo-message-bubble assistant-bubble">
+                      <div className="demo-assistant-label">AskKaya responded:</div>
+                      {msg.text}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {toolCallPhase === 'calling' && (
+                <div className="demo-message tool">
+                  <div className="demo-tool-call loading">
+                    <div className="demo-tool-header">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="spin">
+                        <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" />
+                      </svg>
+                      <span>Calling AskKaya...</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {toolCallPhase === 'responding' && (
+                <div className="demo-message assistant">
+                  <div className="demo-message-bubble assistant-bubble typing">
+                    <span></span><span></span><span></span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="demo-chat-input">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask your AI assistant..."
+                disabled={toolCallPhase !== 'idle'}
+              />
+              <button onClick={handleSend} disabled={toolCallPhase !== 'idle' || !input.trim()}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                </svg>
+              </button>
+            </div>
+
+            <a href="#get-started" className="demo-chat-cta">
+              Request Full Access
+            </a>
           </div>
         </div>
       </section>
@@ -190,21 +367,6 @@ curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/insta
               <p className="feature-desc">
                 Low confidence answers automatically escalate via Telegram.
                 Human expertise when needed, automation when possible.
-              </p>
-            </div>
-
-            <div className="feature-card">
-              <div className="feature-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ color: '#D97706' }}>
-                  <path d="M12 2a10 10 0 1 0 10 10" />
-                  <path d="M12 12l8-8" />
-                  <path d="M16 4h4v4" />
-                </svg>
-              </div>
-              <h3 className="feature-title">Multi-Tenant KB</h3>
-              <p className="feature-desc">
-                Personal, client, and global knowledge scopes. Control exactly
-                who sees what with fine-grained access control.
               </p>
             </div>
 
@@ -389,6 +551,22 @@ curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/insta
               kaya@forever22studios.com
             </a>
           </p>
+        </div>
+      </section>
+
+      {/* White Label Callout */}
+      <section className="whitelabel-section">
+        <div className="whitelabel-content">
+          <span className="whitelabel-badge">Enterprise</span>
+          <h3 className="whitelabel-title">
+            Want your own <span style={{ color: 'var(--amber)' }}>Ask[You]</span>?
+          </h3>
+          <p className="whitelabel-desc">
+            White-label solutions available. Build your own digital twin for your brand or business.
+          </p>
+          <a href="mailto:kaya@forever22studios.com?subject=White Label Inquiry" className="whitelabel-link">
+            Get in touch →
+          </a>
         </div>
       </section>
 
