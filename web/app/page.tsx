@@ -4,21 +4,29 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import './marketing.css'
 
-// Call the demo API to get real KB responses
-async function queryAskKaya(question: string): Promise<string> {
-  try {
-    const response = await fetch('/api/demo', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question }),
-    })
+// Demo KB responses (client-side for static export)
+const demoResponses: Record<string, string> = {
+  'who is kaya': "Kaya Jones is a multi-project developer who manages full-stack applications across Go, TypeScript, Python, Firebase, and React. She's currently building AskKaya (this!), YouDle (a blog/newsletter platform), and an autonomous conversational AI robot using Reachy Mini hardware with facial recognition and voice I/O. She's hands-on with robotics, AI integration, and has strong technical taste—she prioritizes code clarity and user experience. Based in Central Time, she runs Forever 22 Studios.",
+  'kaya': "Kaya Jones is a multi-project developer who manages full-stack applications across Go, TypeScript, Python, Firebase, and React. She's currently building AskKaya (this!), YouDle (a blog/newsletter platform), and an autonomous conversational AI robot using Reachy Mini hardware with facial recognition and voice I/O. She's hands-on with robotics, AI integration, and has strong technical taste—she prioritizes code clarity and user experience. Based in Central Time, she runs Forever 22 Studios.",
+  'openclaw': "OpenClaw is an open-source personal AI assistant that runs locally on your machine. It works through chat apps like WhatsApp, Telegram, Discord, Slack, Signal, or iMessage. Key features: persistent memory that learns your preferences, browser control for navigating sites and filling forms, system access for files/commands (sandboxed), and 50+ integrations including Claude, GPT, Spotify, Gmail, and GitHub. Install with: curl -fsSL https://openclaw.ai/install.sh | bash",
+  'setup': "To set up OpenClaw:\n1. One-liner install: curl -fsSL https://openclaw.ai/install.sh | bash\n2. Or via NPM: npm i -g openclaw then openclaw onboard\n3. Or build from source: clone the repo and run pnpm build\n\nOnce installed, connect it to your preferred chat app (WhatsApp, Telegram, Discord, etc.) and start chatting with your AI assistant!",
+  'honcho': "Honcho is a memory/context management system for AI agents. Kaya uses it to give her AI tools persistent memory across sessions—it's what powers the 'learns from every interaction' part of AskKaya. You can configure it via the Honcho MCP server or SDK to maintain context across conversations.",
+  'contact': "You can reach Kaya at kaya@forever22studios.com. She's open to collaborations, consulting, and interesting projects—especially anything involving AI agents, robotics, or full-stack development.",
+  'mcp': "MCP (Model Context Protocol) is how AI assistants connect to external tools and data sources. It's the protocol that lets Claude Code, OpenClaw, and other AI tools call external APIs and services. AskKaya is available as an MCP server so your AI assistant can query Kaya's knowledge base automatically.",
+  'reachy': "Kaya is building an autonomous conversational robot using Reachy Mini hardware. It has facial recognition (face_identity.py backend), voice I/O with Whisper STT and ElevenLabs TTS, and uses Claude for reasoning via MCP integration. The robot can recognize faces, have natural conversations, and express itself through animations.",
+  'robot': "Kaya is building an autonomous conversational robot using Reachy Mini hardware. It has facial recognition (face_identity.py backend), voice I/O with Whisper STT and ElevenLabs TTS, and uses Claude for reasoning via MCP integration. The robot can recognize faces, have natural conversations, and express itself through animations.",
+}
 
-    const data = await response.json()
-    return data.text || data.error || "Something went wrong. Please try again."
-  } catch (error) {
-    console.error('Demo query error:', error)
-    return "Couldn't connect to AskKaya. Please try again or request full access."
+function queryAskKaya(question: string): string {
+  const q = question.toLowerCase()
+
+  for (const [key, value] of Object.entries(demoResponses)) {
+    if (q.includes(key)) {
+      return value
+    }
   }
+
+  return "I don't have enough information to answer that in this demo. Request full access to get answers from the complete knowledge base!"
 }
 
 export default function LandingPage() {
@@ -49,7 +57,7 @@ export default function LandingPage() {
     }
   }, [messages])
 
-  const handleSend = async () => {
+  const handleSend = () => {
     if (!input.trim()) return
 
     const userMessage = input.trim()
@@ -58,7 +66,7 @@ export default function LandingPage() {
     setToolCallPhase('calling')
 
     // Phase 1: Show tool call
-    setTimeout(async () => {
+    setTimeout(() => {
       setMessages(prev => [...prev, {
         role: 'tool',
         text: userMessage,
@@ -66,13 +74,15 @@ export default function LandingPage() {
       }])
       setToolCallPhase('responding')
 
-      // Phase 2: Get real response from API
-      const response = await queryAskKaya(userMessage)
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        text: response
-      }])
-      setToolCallPhase('idle')
+      // Phase 2: Get response from client-side KB
+      setTimeout(() => {
+        const response = queryAskKaya(userMessage)
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          text: response
+        }])
+        setToolCallPhase('idle')
+      }, 500 + Math.random() * 300)
     }, 400 + Math.random() * 300)
   }
 

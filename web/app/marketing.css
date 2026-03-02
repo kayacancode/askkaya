@@ -54,12 +54,13 @@ nav {
   backdrop-filter: blur(0px);
   position: relative;
   z-index: 100;
+  padding-top: 0.5rem;
 }
 
 .nav-container {
   max-width: 80rem;
   margin: 0 auto;
-  padding: 1rem 1.5rem;
+  padding: 1.25rem 2rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
