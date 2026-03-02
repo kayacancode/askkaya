@@ -12,55 +12,37 @@ import { type ModelConfig } from './model-config';
 const ESCALATION_THRESHOLD = 0.65;  // Below this, escalate to human
 const CRITICAL_THRESHOLD = 0.4;     // Below this, refuse to answer
 
-// Cloudflare AI Gateway base
-const CF_GATEWAY_BASE = 'https://gateway.ai.cloudflare.com/v1/0c3240509aa27a7e737544ef66423171/kayaclaw';
+// Cloudflare AI Gateway - unified /compat endpoint
+const CF_GATEWAY_URL = 'https://gateway.ai.cloudflare.com/v1/0c3240509aa27a7e737544ef66423171/kayaclaw/compat';
 
-// Provider-specific clients (cached)
-const clients: Map<string, OpenAI> = new Map();
+// Cached client (single client for all providers via /compat)
+let _client: OpenAI | null = null;
 
 /**
- * Get or create an OpenAI-compatible client for a provider
+ * Get OpenAI-compatible client for Cloudflare AI Gateway /compat endpoint
  */
-function getClientForProvider(provider: 'openai' | 'anthropic' | 'openrouter'): OpenAI {
-  if (clients.has(provider)) {
-    return clients.get(provider)!;
+function getClient(): OpenAI {
+  if (_client) {
+    return _client;
   }
 
   const cfToken = process.env['CF_AIG_TOKEN'] || '';
 
-  // Provider-specific endpoints via Cloudflare AI Gateway
-  // All providers use CF token - provider keys are stored in Cloudflare dashboard
-  const baseURLs: Record<string, string> = {
-    openai: `${CF_GATEWAY_BASE}/openai`,
-    anthropic: `${CF_GATEWAY_BASE}/anthropic`,
-    openrouter: `${CF_GATEWAY_BASE}/openrouter`,
-  };
-
-  const client = new OpenAI({
+  _client = new OpenAI({
     apiKey: cfToken,
-    baseURL: baseURLs[provider],
-    defaultHeaders: provider === 'openrouter' ? {
-      'HTTP-Referer': 'https://askkaya.com',
-      'X-Title': 'AskKaya',
-    } : undefined,
+    baseURL: CF_GATEWAY_URL,
   });
 
-  clients.set(provider, client);
-  return client;
+  return _client;
 }
 
 /**
- * Get the model ID to send to the provider
- * Handles fallback for providers that aren't fully configured
+ * Get the model ID in provider/model format for /compat endpoint
+ * e.g., "anthropic/claude-sonnet-4-5-20250929", "openai/gpt-4o-mini"
  */
-function getEffectiveModel(modelConfig: ModelConfig): { provider: 'openai' | 'anthropic' | 'openrouter'; model: string } {
-  // Anthropic currently fails with credit issues - fall back to OpenAI
-  if (modelConfig.provider === 'anthropic') {
-    console.warn(`Anthropic model ${modelConfig.id} requested but unavailable (credit issue), falling back to gpt-4o-mini`);
-    return { provider: 'openai', model: 'gpt-4o-mini' };
-  }
-
-  return { provider: modelConfig.provider, model: modelConfig.backendModel };
+function getModelForCompat(modelConfig: ModelConfig): string {
+  // Format: provider/backendModel
+  return `${modelConfig.provider}/${modelConfig.backendModel}`;
 }
 
 const MAX_TOKENS = 1024;
@@ -94,12 +76,12 @@ export async function generateResponse(
   image?: ImageInput,
   modelConfig?: ModelConfig
 ): Promise<GenerationResult> {
-  // Get effective model (with fallback for unavailable providers)
-  const { provider, model } = modelConfig
-    ? getEffectiveModel(modelConfig)
-    : { provider: 'openai' as const, model: 'gpt-4o-mini' };
+  // Get model in provider/model format for /compat endpoint
+  const model = modelConfig
+    ? getModelForCompat(modelConfig)
+    : 'openai/gpt-4o-mini';  // Default fallback
 
-  const client = getClientForProvider(provider);
+  const client = getClient();
   const systemPrompt = `You are a helpful customer support assistant for ${clientName}.
 Your job is to answer questions based on the provided knowledge base context.
 
