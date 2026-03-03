@@ -240,14 +240,14 @@ export async function getAssignedModel(uid: string): Promise<ModelConfig> {
 
   // Fall back to global default
   if (!modelId) {
-    modelId = 'claude-sonnet-4-5';
+    modelId = 'gpt-4o-mini';
   }
 
   const config = await getModelConfig(modelId);
   if (!config) {
     // If assigned model doesn't exist, fall back to default
     logger.warn('Assigned model not found, using default', { modelId, uid });
-    const defaultConfig = await getModelConfig('claude-sonnet-4-5');
+    const defaultConfig = await getModelConfig('gpt-4o-mini');
     if (!defaultConfig) {
       throw new Error('No models configured');
     }
