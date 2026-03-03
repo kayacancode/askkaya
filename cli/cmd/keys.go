@@ -64,7 +64,7 @@ func runKeysCreate(cmd *cobra.Command, args []string) error {
 
 	// Load tokens from keychain
 	keychain := auth.NewKeychain(keychainService)
-	tokens, err := keychain.LoadTokens()
+	tokens, err := keychain.LoadAndRefreshTokens(apiKey)
 	if err != nil {
 		return fmt.Errorf("not logged in. Run 'askkaya auth login' first")
 	}
@@ -129,7 +129,7 @@ type listKeysResponse struct {
 func runKeysList(cmd *cobra.Command, args []string) error {
 	// Load tokens from keychain
 	keychain := auth.NewKeychain(keychainService)
-	tokens, err := keychain.LoadTokens()
+	tokens, err := keychain.LoadAndRefreshTokens(apiKey)
 	if err != nil {
 		return fmt.Errorf("not logged in. Run 'askkaya auth login' first")
 	}
@@ -195,7 +195,7 @@ func runKeysRevoke(cmd *cobra.Command, args []string) error {
 
 	// Load tokens from keychain
 	keychain := auth.NewKeychain(keychainService)
-	tokens, err := keychain.LoadTokens()
+	tokens, err := keychain.LoadAndRefreshTokens(apiKey)
 	if err != nil {
 		return fmt.Errorf("not logged in. Run 'askkaya auth login' first")
 	}

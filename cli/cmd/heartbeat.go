@@ -34,20 +34,24 @@ func init() {
 }
 
 func runHeartbeat(cmd *cobra.Command, args []string) error {
-	// Load tokens from keychain
+	// Load tokens from keychain (auto-refreshes if expired)
 	keychain := auth.NewKeychain(keychainService)
-	tokens, err := keychain.LoadTokens()
+	tokens, err := keychain.LoadAndRefreshTokens(apiKey)
 	if err != nil {
 		return fmt.Errorf("not logged in. Run 'askkaya auth login' first")
 	}
 
-	// Check client ID
-	if clientID == "" {
-		return fmt.Errorf("ASKKAYA_CLIENT_ID environment variable is required")
+	// Use stored client ID, or fall back to environment variable
+	effectiveClientID := tokens.ClientID
+	if effectiveClientID == "" {
+		effectiveClientID = clientID
+	}
+	if effectiveClientID == "" {
+		return fmt.Errorf("no client ID found. Please run 'askkaya auth login' again")
 	}
 
 	// Create API client
-	apiClient := api.NewClient(apiBaseURL, tokens.IDToken, clientID)
+	apiClient := api.NewClient(apiBaseURL, tokens.IDToken, effectiveClientID)
 
 	// Set up token refresh
 	authClient := auth.NewClient(apiKey, "https://identitytoolkit.googleapis.com")

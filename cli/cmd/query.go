@@ -42,9 +42,9 @@ func init() {
 }
 
 func runQuery(cmd *cobra.Command, args []string) error {
-	// Load tokens from keychain
+	// Load tokens from keychain (auto-refreshes if expired)
 	keychain := auth.NewKeychain(keychainService)
-	tokens, err := keychain.LoadTokens()
+	tokens, err := keychain.LoadAndRefreshTokens(apiKey)
 	if err != nil {
 		return fmt.Errorf("not logged in. Run 'askkaya auth login' first")
 	}

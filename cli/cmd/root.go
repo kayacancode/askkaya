@@ -31,7 +31,7 @@ The system uses AI-powered RAG to provide accurate answers from your
 organization's knowledge base.
 
 Run without arguments to launch the interactive TUI.`,
-	Version: "0.3.1",
+	Version: "0.3.2",
 	RunE:    runInteractive,
 }
 
@@ -42,9 +42,9 @@ func Execute() error {
 
 // runInteractive launches the TUI when no subcommand is provided
 func runInteractive(cmd *cobra.Command, args []string) error {
-	// Load tokens from keychain
+	// Load tokens from keychain (auto-refreshes if expired)
 	keychain := auth.NewKeychain(keychainService)
-	tokens, err := keychain.LoadTokens()
+	tokens, err := keychain.LoadAndRefreshTokens(apiKey)
 	if err != nil {
 		fmt.Println("Welcome to AskKaya!")
 		fmt.Println()

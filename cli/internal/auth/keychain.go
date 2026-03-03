@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/zalando/go-keyring"
 )
@@ -68,4 +69,39 @@ func (k *Keychain) ClearTokens() error {
 	}
 
 	return nil
+}
+
+// LoadAndRefreshTokens loads tokens and auto-refreshes if expired
+// Returns valid tokens or an error if refresh fails
+func (k *Keychain) LoadAndRefreshTokens(apiKey string) (*AuthTokens, error) {
+	tokens, err := k.LoadTokens()
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if token is expired or about to expire (within 5 minutes)
+	if time.Now().After(tokens.ExpiresAt.Add(-5 * time.Minute)) {
+		// Token is expired or about to expire, refresh it
+		authClient := NewClient(apiKey, "https://securetoken.googleapis.com")
+		newTokens, err := authClient.RefreshToken(tokens.RefreshToken)
+		if err != nil {
+			return nil, fmt.Errorf("token expired and refresh failed: %w", err)
+		}
+
+		// Preserve user info from old tokens
+		newTokens.ClientID = tokens.ClientID
+		newTokens.UserID = tokens.UserID
+		newTokens.Email = tokens.Email
+		newTokens.Role = tokens.Role
+
+		// Save refreshed tokens
+		if err := k.StoreTokens(*newTokens); err != nil {
+			// Log but don't fail - we still have valid tokens
+			fmt.Printf("Warning: could not save refreshed tokens: %v\n", err)
+		}
+
+		return newTokens, nil
+	}
+
+	return tokens, nil
 }

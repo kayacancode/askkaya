@@ -21,13 +21,24 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	fmt.Println("==============")
 	fmt.Println()
 
-	// Check authentication
+	// Check authentication (auto-refreshes if expired)
 	keychain := auth.NewKeychain(keychainService)
-	tokens, err := keychain.LoadTokens()
+	tokens, err := keychain.LoadAndRefreshTokens(apiKey)
 
 	if err != nil {
-		fmt.Println("Authentication: Not logged in")
-		fmt.Println("  Run 'askkaya auth login' to authenticate")
+		// Try to load without refresh to show better error message
+		rawTokens, loadErr := keychain.LoadTokens()
+		if loadErr != nil {
+			fmt.Println("Authentication: Not logged in")
+			fmt.Println("  Run 'askkaya auth login' to authenticate")
+		} else if time.Now().After(rawTokens.ExpiresAt) {
+			fmt.Println("Authentication: Token expired (refresh failed)")
+			fmt.Printf("  Error: %v\n", err)
+			fmt.Println("  Run 'askkaya auth login' to re-authenticate")
+		} else {
+			fmt.Println("Authentication: Error")
+			fmt.Printf("  %v\n", err)
+		}
 		return nil
 	}
 

@@ -47,7 +47,7 @@ type billingInfoResponse struct {
 
 func runBillingStatus(cmd *cobra.Command, args []string) error {
 	keychain := auth.NewKeychain(keychainService)
-	tokens, err := keychain.LoadTokens()
+	tokens, err := keychain.LoadAndRefreshTokens(apiKey)
 	if err != nil {
 		return fmt.Errorf("not logged in. Run 'askkaya auth login' first")
 	}
@@ -131,7 +131,7 @@ type paymentLinkResponse struct {
 
 func runBillingSetup(cmd *cobra.Command, args []string) error {
 	keychain := auth.NewKeychain(keychainService)
-	tokens, err := keychain.LoadTokens()
+	tokens, err := keychain.LoadAndRefreshTokens(apiKey)
 	if err != nil {
 		return fmt.Errorf("not logged in. Run 'askkaya auth login' first")
 	}

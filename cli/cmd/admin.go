@@ -99,7 +99,7 @@ func init() {
 func runLinkStripe(cmd *cobra.Command, args []string) error {
 	// Load tokens from keychain
 	keychain := auth.NewKeychain(keychainService)
-	tokens, err := keychain.LoadTokens()
+	tokens, err := keychain.LoadAndRefreshTokens(apiKey)
 	if err != nil {
 		return fmt.Errorf("not logged in. Run 'askkaya auth login' first")
 	}
@@ -176,7 +176,7 @@ func linkClientToStripe(idToken, clientID, stripeID string) (*linkStripeResponse
 func runProvision(cmd *cobra.Command, args []string) error {
 	// Load tokens from keychain
 	keychain := auth.NewKeychain(keychainService)
-	tokens, err := keychain.LoadTokens()
+	tokens, err := keychain.LoadAndRefreshTokens(apiKey)
 	if err != nil {
 		return fmt.Errorf("not logged in. Run 'askkaya auth login' first")
 	}
@@ -278,7 +278,7 @@ func runSetModel(cmd *cobra.Command, args []string) error {
 
 	// Load tokens from keychain
 	keychain := auth.NewKeychain(keychainService)
-	tokens, err := keychain.LoadTokens()
+	tokens, err := keychain.LoadAndRefreshTokens(apiKey)
 	if err != nil {
 		return fmt.Errorf("not logged in. Run 'askkaya auth login' first")
 	}
