@@ -48,12 +48,19 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	// Check API connectivity if we have a token
-	if clientID != "" {
+	// Use stored client ID from tokens, fall back to env var
+	effectiveClientID := tokens.ClientID
+	if effectiveClientID == "" {
+		effectiveClientID = clientID
+	}
+
+	if effectiveClientID != "" {
 		fmt.Println()
 		fmt.Println("API Status:")
+		fmt.Printf("  Client ID: %s\n", effectiveClientID)
 		fmt.Printf("  Base URL: %s\n", apiBaseURL)
 
-		apiClient := api.NewClient(apiBaseURL, tokens.IDToken, clientID)
+		apiClient := api.NewClient(apiBaseURL, tokens.IDToken, effectiveClientID)
 		if err := apiClient.HealthCheck(); err != nil {
 			fmt.Printf("  Health: Unhealthy (%v)\n", err)
 		} else {
@@ -61,7 +68,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		}
 	} else {
 		fmt.Println()
-		fmt.Println("API Status: Skipped (ASKKAYA_CLIENT_ID not set)")
+		fmt.Println("API Status: Skipped (no client ID found - try 'askkaya auth login')")
 	}
 
 	return nil
