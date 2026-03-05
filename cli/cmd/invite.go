@@ -16,6 +16,8 @@ var (
 	inviteMaxUses    int
 	inviteExpiryDays int
 	inviteNote       string
+	inviteClientType string
+	inviteTrialCredits int
 )
 
 var inviteCmd = &cobra.Command{
@@ -29,11 +31,22 @@ var inviteGenerateCmd = &cobra.Command{
 	Short: "Generate new invite codes",
 	Long: `Generate one or more invite codes for new users.
 
+Client Types:
+  retainer       - Subscription-based (unlimited queries, requires payment)
+  pay_per_query  - Credit-based (trial credits, pay as you go)
+
 Examples:
-  askkaya invite generate                    # Generate 1 code
-  askkaya invite generate -n 5               # Generate 5 codes
-  askkaya invite generate -n 3 --max-uses 5  # 3 codes, each usable 5 times
-  askkaya invite generate --expires 30       # Expires in 30 days`,
+  # Retainer client (subscription)
+  askkaya invite generate --type retainer
+
+  # Pay-per-query client with trial credits
+  askkaya invite generate --type pay_per_query --trial-credits 10
+
+  # Multiple codes
+  askkaya invite generate -n 5 --type pay_per_query
+
+  # With expiration
+  askkaya invite generate --type retainer --expires 30`,
 	RunE: runInviteGenerate,
 }
 
@@ -42,12 +55,19 @@ func init() {
 	inviteGenerateCmd.Flags().IntVar(&inviteMaxUses, "max-uses", 1, "Maximum uses per code")
 	inviteGenerateCmd.Flags().IntVar(&inviteExpiryDays, "expires", 0, "Days until expiration (0 = never)")
 	inviteGenerateCmd.Flags().StringVar(&inviteNote, "note", "", "Note for the invite codes")
+	inviteGenerateCmd.Flags().StringVar(&inviteClientType, "type", "retainer", "Client type (retainer or pay_per_query)")
+	inviteGenerateCmd.Flags().IntVar(&inviteTrialCredits, "trial-credits", 10, "Trial credits for pay_per_query clients")
 
 	inviteCmd.AddCommand(inviteGenerateCmd)
 	// Note: inviteCmd is added to rootCmd in root.go (admin-only)
 }
 
 func runInviteGenerate(cmd *cobra.Command, args []string) error {
+	// Validate client type
+	if inviteClientType != "retainer" && inviteClientType != "pay_per_query" {
+		return fmt.Errorf("invalid client type: %s (must be 'retainer' or 'pay_per_query')", inviteClientType)
+	}
+
 	// Load tokens from keychain
 	keychain := auth.NewKeychain(keychainService)
 	tokens, err := keychain.LoadAndRefreshTokens(apiKey)
@@ -55,9 +75,17 @@ func runInviteGenerate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("not logged in. Run 'askkaya auth login' first")
 	}
 
-	fmt.Printf("Generating %d invite code(s)...\n", inviteCount)
+	fmt.Printf("Generating %d invite code(s) for %s clients...\n", inviteCount, inviteClientType)
 
-	result, err := generateInviteCodes(tokens.IDToken, inviteCount, inviteMaxUses, inviteExpiryDays, inviteNote)
+	result, err := generateInviteCodes(
+		tokens.IDToken,
+		inviteCount,
+		inviteMaxUses,
+		inviteExpiryDays,
+		inviteNote,
+		inviteClientType,
+		inviteTrialCredits,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to generate invite codes: %w", err)
 	}
@@ -67,43 +95,55 @@ func runInviteGenerate(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Println()
-	fmt.Println("Generated invite codes:")
-	fmt.Println("------------------------")
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	fmt.Println("Generated Invite Codes")
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	for _, code := range result.Codes {
 		fmt.Printf("  %s\n", code)
 	}
-	fmt.Println("------------------------")
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	fmt.Printf("\nTotal: %d code(s)\n", len(result.Codes))
+	fmt.Printf("Client Type: %s\n", result.ClientType)
 
+	if result.ClientType == "pay_per_query" && result.TrialCredits > 0 {
+		fmt.Printf("Trial Credits: %d\n", result.TrialCredits)
+	}
 	if inviteMaxUses > 1 {
 		fmt.Printf("Max uses per code: %d\n", inviteMaxUses)
 	}
 	if inviteExpiryDays > 0 {
 		fmt.Printf("Expires in: %d days\n", inviteExpiryDays)
 	}
+	fmt.Println()
 
 	return nil
 }
 
 type generateInviteResponse struct {
-	Success bool     `json:"success"`
-	Codes   []string `json:"codes"`
-	Count   int      `json:"count"`
-	Error   string   `json:"error,omitempty"`
+	Success      bool     `json:"success"`
+	Codes        []string `json:"codes"`
+	Count        int      `json:"count"`
+	ClientType   string   `json:"client_type"`
+	TrialCredits int      `json:"trial_credits,omitempty"`
+	Error        string   `json:"error,omitempty"`
 }
 
-func generateInviteCodes(idToken string, count, maxUses, expiryDays int, note string) (*generateInviteResponse, error) {
+func generateInviteCodes(idToken string, count, maxUses, expiryDays int, note, clientType string, trialCredits int) (*generateInviteResponse, error) {
 	url := apiBaseURL + "/generateInviteApi"
 
 	body := map[string]interface{}{
-		"count":    count,
-		"max_uses": maxUses,
+		"count":       count,
+		"max_uses":    maxUses,
+		"client_type": clientType,
 	}
 	if expiryDays > 0 {
 		body["expires_in_days"] = expiryDays
 	}
 	if note != "" {
 		body["note"] = note
+	}
+	if clientType == "pay_per_query" {
+		body["trial_credits"] = trialCredits
 	}
 
 	bodyBytes, _ := json.Marshal(body)

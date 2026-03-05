@@ -31,6 +31,8 @@ export interface InviteCode {
   uses: number;
   used_by: string[];
   note?: string;
+  client_type?: 'retainer' | 'pay_per_query'; // Type of client this invite creates
+  trial_credits?: number; // For pay_per_query clients
 }
 
 export interface SignupResult {
@@ -61,6 +63,8 @@ export async function createInviteCode(
     maxUses?: number;
     expiresInDays?: number;
     note?: string;
+    clientType?: 'retainer' | 'pay_per_query';
+    trialCredits?: number;
   } = {}
 ): Promise<string> {
   const db = getDb();
@@ -73,6 +77,7 @@ export async function createInviteCode(
     max_uses: options.maxUses || 1,
     uses: 0,
     used_by: [],
+    client_type: options.clientType || 'retainer', // Default to retainer for backwards compatibility
   };
 
   if (options.expiresInDays) {
@@ -83,6 +88,11 @@ export async function createInviteCode(
 
   if (options.note) {
     inviteData.note = options.note;
+  }
+
+  // For pay_per_query clients, set trial credits
+  if (options.clientType === 'pay_per_query') {
+    inviteData.trial_credits = options.trialCredits || 10; // Default 10 trial credits
   }
 
   // Use code as document ID for easy lookup
@@ -138,6 +148,12 @@ export async function signupWithInvite(
   }
 
   try {
+    // Get invite code details
+    const inviteDoc = await db.collection('invite_codes').doc(normalizedCode).get();
+    const inviteData = inviteDoc.data() as InviteCode;
+    const clientType = inviteData.client_type || 'retainer';
+    const trialCredits = inviteData.trial_credits || 10;
+
     // Create Firebase Auth user
     const userRecord = await auth.createUser({
       email,
@@ -145,16 +161,33 @@ export async function signupWithInvite(
       emailVerified: false,
     });
 
-    // Create client record for the user
-    // Start with 'pending' billing status - must complete payment to activate
-    const clientRef = await db.collection('clients').add({
+    // Create client record based on invite type
+    const clientData: any = {
       name: email.split('@')[0],
       email,
-      billing_status: 'pending', // Requires payment to activate
+      client_type: clientType,
       setup_context: ['general'],
       created_at: admin.firestore.FieldValue.serverTimestamp(),
       invited_by_code: normalizedCode,
-    });
+    };
+
+    // Configure based on client type
+    if (clientType === 'retainer') {
+      // Retainer clients: subscription-based, pending payment
+      clientData.billing_status = 'pending'; // Requires payment to activate
+    } else if (clientType === 'pay_per_query') {
+      // Pay-per-query clients: credit-based, active immediately with trial credits
+      clientData.billing_status = 'active'; // Active with trial credits
+      clientData.credits = {
+        balance: trialCredits,
+        trial_credits_given: trialCredits,
+        trial_credits_used: false,
+      };
+      clientData.kb_query_cost = 1;
+      clientData.human_query_cost = 5;
+    }
+
+    const clientRef = await db.collection('clients').add(clientData);
 
     // Create user → client mapping
     await db.collection('users').doc(userRecord.uid).set({

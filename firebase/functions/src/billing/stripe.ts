@@ -79,6 +79,10 @@ export async function handleStripeWebhook(
       await handleSubscriptionDeleted(event);
       break;
 
+    case 'checkout.session.completed':
+      await handleCheckoutSessionCompleted(event);
+      break;
+
     default:
       // Ignore unknown event types
       console.log(`Unhandled event type: ${event.type}`);
@@ -118,6 +122,28 @@ async function handleSubscriptionDeleted(event: Stripe.Event): Promise<void> {
   const customerId = subscription.customer as string;
 
   await updateClientBillingStatus(customerId, 'cancelled');
+}
+
+/**
+ * Handle checkout.session.completed event
+ * For one-time credit purchases (mode = 'payment')
+ */
+async function handleCheckoutSessionCompleted(event: Stripe.Event): Promise<void> {
+  const session = event.data.object as Stripe.Checkout.Session;
+
+  // Only handle one-time payments (credit purchases)
+  // Subscriptions are handled by invoice.paid
+  if (session.mode !== 'payment') {
+    return;
+  }
+
+  // Check if this is a credit purchase (has credits_amount in metadata)
+  if (!session.metadata?.credits_amount) {
+    return;
+  }
+
+  const { handleCreditPurchaseComplete } = await import('./credits.js');
+  await handleCreditPurchaseComplete(session);
 }
 
 /**

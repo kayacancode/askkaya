@@ -114,6 +114,16 @@ func runQuery(cmd *cobra.Command, args []string) error {
 			fmt.Fprintln(os.Stderr, "Please update your payment method or contact support.")
 			return nil
 		}
+		if strings.Contains(errStr, "insufficient_credits") {
+			fmt.Fprintln(os.Stderr, "")
+			fmt.Fprintln(os.Stderr, "💳 Out of credits!")
+			fmt.Fprintln(os.Stderr, "")
+			fmt.Fprintln(os.Stderr, "Purchase more credits:")
+			fmt.Fprintln(os.Stderr, "  askkaya credits buy")
+			fmt.Fprintln(os.Stderr, "")
+			fmt.Fprintln(os.Stderr, "Or contact Kaya: kayarjones901@gmail.com")
+			return nil
+		}
 		return fmt.Errorf("query failed: %w", err)
 	}
 

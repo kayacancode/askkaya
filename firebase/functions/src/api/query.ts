@@ -114,13 +114,29 @@ export async function processQuery(
   
   // Check billing status
   const billingStatus = clientData?.billing_status;
-  if (billingStatus === 'pending') {
-    logger.warn('Billing pending - payment required', { clientId });
-    throw new Error('billing_pending');
+  const clientType = clientData?.client_type || 'retainer';  // Default to retainer for existing clients
+
+  // For retainer clients, check billing status
+  if (clientType === 'retainer') {
+    if (billingStatus === 'pending') {
+      logger.warn('Billing pending - payment required', { clientId });
+      throw new Error('billing_pending');
+    }
+    if (billingStatus === 'suspended' || billingStatus === 'cancelled') {
+      logger.warn('Billing suspended or cancelled', { clientId, billingStatus });
+      throw new Error('billing_suspended');
+    }
   }
-  if (billingStatus === 'suspended' || billingStatus === 'cancelled') {
-    logger.warn('Billing suspended or cancelled', { clientId, billingStatus });
-    throw new Error('billing_suspended');
+
+  // For pay-per-query clients, check credits
+  if (clientType === 'pay_per_query') {
+    const credits = clientData?.credits?.balance || 0;
+    const minCost = clientData?.kb_query_cost || 1;
+
+    if (credits < minCost) {
+      logger.warn('Insufficient credits', { clientId, credits, minCost });
+      throw new Error('insufficient_credits');
+    }
   }
   
   const clientName = clientData?.name || 'Unknown Client';
@@ -189,7 +205,26 @@ export async function processQuery(
     
     const durationMs = Date.now() - startTime;
     logger.logQueryResult(clientId, generation.confidence, escalated, durationMs);
-    
+
+    // Deduct credits for pay-per-query users
+    if (clientType === 'pay_per_query') {
+      // Determine cost based on whether query was escalated (human-required)
+      const cost = escalated
+        ? (clientData?.human_query_cost || 5)  // Human-answered query costs more
+        : (clientData?.kb_query_cost || 1);    // KB-answered query costs less
+
+      await db.collection('clients').doc(clientId).update({
+        'credits.balance': admin.firestore.FieldValue.increment(-cost),
+      });
+
+      logger.info('Credits deducted', {
+        clientId,
+        cost,
+        type: escalated ? 'human' : 'kb',
+        escalated,
+      });
+    }
+
     return {
       text: generation.text,
       confidence: generation.confidence,

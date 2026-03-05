@@ -4,17 +4,20 @@
  * Firebase Cloud Functions v2 for the AskKaya platform
  */
 
-import { onDocumentCreated } from 'firebase-functions/v2/firestore';
+import { onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import { onRequest } from 'firebase-functions/v2/https';
 import { sendNotification } from './notify/router';
 import { handleTelegramUpdate } from './notify/telegram';
+import { notifyUserOfAnswer } from './notify/user-notification';
 import type { Escalation, TelegramUpdate } from './notify/types';
 import * as logger from './utils/logger';
 
 // API imports
 import { processQuery, healthCheck } from './api/query';
+import { getEscalations, getEscalation } from './api/escalations';
 import { authenticateRequest, authenticateUserOnly, type AuthenticatedRequest, type AuthResponse } from './middleware/auth';
 import { handleStripeWebhook, linkClientToStripe, createPaymentLink, getOrCreatePaymentLink } from './billing/stripe';
+import { createCreditPurchaseSession, getAvailableCreditPacks, type CreditPackType } from './billing/credits';
 import { verifyWebhookSignature, parseGitHubPush, type GitHubPushPayload } from './processing/webhook';
 import { generateEmbedding } from './services/embeddings';
 import {
@@ -90,6 +93,55 @@ export const onEscalationCreated = onDocumentCreated(
         escalationId,
         clientId: escalation.clientId,
       });
+    }
+  }
+);
+
+/**
+ * Firestore trigger: Notify user when escalation is answered
+ * Sends email notification when status changes to 'answered'
+ */
+export const onEscalationAnswered = onDocumentUpdated(
+  'escalations/{escalationId}',
+  async (event) => {
+    const escalationId = event.params.escalationId;
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+
+    if (!before || !after) {
+      logger.error('No data in escalation update event', undefined, { escalationId });
+      return;
+    }
+
+    // Only notify if status changed to 'answered'
+    if (before['status'] !== 'answered' && after['status'] === 'answered') {
+      const clientId = after['clientId'] as string;
+      const query = after['query'] as string;
+      const answer = after['answer'] as string;
+
+      if (!clientId || !query || !answer) {
+        logger.warn('Missing required fields for escalation notification', {
+          escalationId,
+          hasClientId: !!clientId,
+          hasQuery: !!query,
+          hasAnswer: !!answer,
+        });
+        return;
+      }
+
+      logger.info('Escalation answered, notifying user', {
+        escalationId,
+        clientId,
+      });
+
+      try {
+        await notifyUserOfAnswer(escalationId, clientId, query, answer);
+      } catch (error) {
+        logger.error('Failed to notify user of answer', error as Error, {
+          escalationId,
+          clientId,
+        });
+      }
     }
   }
 );
@@ -239,8 +291,83 @@ export const queryApi = onRequest({ invoker: 'public' }, async (req, res) => {
         return;
       }
 
+      if (err.message === 'insufficient_credits') {
+        logger.logRequestComplete(req.method, req.path, 402, durationMs);
+        res.status(402).json({
+          error: 'insufficient_credits',
+          message: 'Out of credits. Purchase more credits to continue.',
+        });
+        return;
+      }
+
       logger.error('Query API error', err, { durationMs });
       logger.logRequestComplete(req.method, req.path, 500, durationMs);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+});
+
+/**
+ * HTTP endpoint: Escalations API
+ * Get escalations for the authenticated user
+ *
+ * GET /escalationsApi?pending=true
+ * GET /escalationsApi/{escalationId}
+ */
+export const escalationsApi = onRequest({ invoker: 'public' }, async (req, res) => {
+  // Set CORS headers
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Client-ID');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  if (req.method !== 'GET') {
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+
+  const authReq = req as unknown as AuthenticatedRequest;
+  const authRes = res as unknown as AuthResponse;
+
+  await authenticateRequest(authReq, authRes, async () => {
+    try {
+      const clientId = req.headers['x-client-id'] as string;
+
+      if (!clientId) {
+        res.status(400).json({ error: 'Missing X-Client-ID header' });
+        return;
+      }
+
+      // Check if requesting specific escalation by ID
+      // Extract escalation ID from path (e.g., /escalationsApi/abc123)
+      const pathParts = req.path.split('/').filter(p => p);
+      const escalationId = pathParts.length > 1 ? pathParts[pathParts.length - 1] : null;
+
+      if (escalationId && escalationId !== 'escalationsApi') {
+        // Get specific escalation
+        const escalation = await getEscalation(escalationId, clientId);
+        res.status(200).json(escalation);
+      } else {
+        // Get list of escalations
+        const pendingOnly = req.query.pending === 'true';
+        const escalations = await getEscalations(clientId, pendingOnly);
+        res.status(200).json({ escalations });
+      }
+    } catch (error) {
+      const err = error as Error;
+      if (err.message === 'Escalation not found') {
+        res.status(404).json({ error: 'Escalation not found' });
+        return;
+      }
+      if (err.message === 'Access denied') {
+        res.status(403).json({ error: 'Access denied' });
+        return;
+      }
+      logger.error('Escalations API error', err);
       res.status(500).json({ error: 'Internal server error' });
     }
   });
@@ -499,11 +626,20 @@ export const generateInviteApi = onRequest({ invoker: 'public' }, async (req, re
 
   await authenticateUserOnly(authReq, authRes, async () => {
     try {
-      const { count = 1, max_uses = 1, expires_in_days, note } = req.body as {
+      const {
+        count = 1,
+        max_uses = 1,
+        expires_in_days,
+        note,
+        client_type = 'retainer',
+        trial_credits = 10,
+      } = req.body as {
         count?: number;
         max_uses?: number;
         expires_in_days?: number;
         note?: string;
+        client_type?: 'retainer' | 'pay_per_query';
+        trial_credits?: number;
       };
 
       // Limit batch generation
@@ -515,6 +651,8 @@ export const generateInviteApi = onRequest({ invoker: 'public' }, async (req, re
           maxUses: max_uses,
           expiresInDays: expires_in_days,
           note,
+          clientType: client_type,
+          trialCredits: trial_credits,
         });
         codes.push(code);
       }
@@ -523,6 +661,8 @@ export const generateInviteApi = onRequest({ invoker: 'public' }, async (req, re
         success: true,
         codes,
         count: codes.length,
+        client_type,
+        trial_credits: client_type === 'pay_per_query' ? trial_credits : undefined,
       });
     } catch (error) {
       logger.error('Generate invite error', error as Error);
@@ -808,6 +948,88 @@ export const billingSetupApi = onRequest({ invoker: 'public' }, async (req, res)
       } catch (error) {
         logger.error('Billing setup error', error as Error);
         res.status(500).json({ error: 'Failed to generate payment link' });
+      }
+    }
+  );
+});
+
+/**
+ * HTTP endpoint: Purchase Credits
+ * Create Stripe checkout session for one-time credit purchase
+ *
+ * POST /purchaseCreditsApi
+ * Body: { pack: 'starter' | 'standard' | 'pro' }
+ * Returns: { success: true, url: string }
+ */
+export const purchaseCreditsApi = onRequest({ invoker: 'public' }, async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Client-ID');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  logger.logRequest(req.method, req.path);
+
+  // GET - List available credit packs
+  if (req.method === 'GET') {
+    const packs = getAvailableCreditPacks();
+    res.status(200).json({ packs });
+    return;
+  }
+
+  // POST - Create checkout session
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+
+  // Authenticate user
+  await authenticateUserOnly(
+    req as AuthenticatedRequest,
+    res as unknown as AuthResponse,
+    async () => {
+      try {
+        const user = (req as AuthenticatedRequest).user;
+        if (!user) {
+          res.status(401).json({ error: 'Not authenticated' });
+          return;
+        }
+
+        const { pack } = req.body as { pack?: CreditPackType };
+
+        if (!pack) {
+          res.status(400).json({ error: 'pack is required (starter, standard, or pro)' });
+          return;
+        }
+
+        // Get client ID from user
+        const userDoc = await getDb().collection('users').doc(user.uid).get();
+        const clientId = userDoc.data()?.client_id;
+
+        if (!clientId) {
+          res.status(400).json({ error: 'No client associated with this account' });
+          return;
+        }
+
+        const result = await createCreditPurchaseSession(
+          clientId,
+          pack,
+          `https://askkaya.com/credits/success?pack=${pack}`,
+          'https://askkaya.com/credits/cancel'
+        );
+
+        if (!result.success) {
+          res.status(400).json({ success: false, error: result.error });
+          return;
+        }
+
+        res.status(200).json(result);
+      } catch (error) {
+        logger.error('Purchase credits error', error as Error);
+        res.status(500).json({ error: 'Failed to create checkout session' });
       }
     }
   );

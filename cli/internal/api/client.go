@@ -18,6 +18,17 @@ type QueryResponse struct {
 	Escalated  bool     `json:"escalated"`
 }
 
+// Escalation represents an escalated support question
+type Escalation struct {
+	ID         string `json:"id"`
+	Query      string `json:"query"`
+	Status     string `json:"status"`
+	Answer     string `json:"answer"`
+	CreatedAt  string `json:"createdAt"`
+	AnsweredAt string `json:"answeredAt"`
+	Confidence float64 `json:"confidence"`
+}
+
 // ImageInput represents an image to include with a query
 type ImageInput struct {
 	Data      string `json:"data"`      // base64 encoded image data
@@ -190,4 +201,76 @@ func (c *APIClient) HealthCheck() error {
 	}
 
 	return nil
+}
+
+// GetEscalations fetches user's escalations
+func (c *APIClient) GetEscalations(pendingOnly bool) ([]Escalation, error) {
+	url := fmt.Sprintf("%s/escalationsApi?pending=%t", c.BaseURL, pendingOnly)
+
+	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.token))
+	req.Header.Set("X-Client-ID", c.clientID)
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("network error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("request failed with status %d", resp.StatusCode)
+	}
+
+	var response struct {
+		Escalations []Escalation `json:"escalations"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return response.Escalations, nil
+}
+
+// GetEscalation fetches a specific escalation
+func (c *APIClient) GetEscalation(id string) (Escalation, error) {
+	url := fmt.Sprintf("%s/escalationsApi/%s", c.BaseURL, id)
+
+	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return Escalation{}, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.token))
+	req.Header.Set("X-Client-ID", c.clientID)
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return Escalation{}, fmt.Errorf("network error: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return Escalation{}, fmt.Errorf("escalation not found")
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return Escalation{}, fmt.Errorf("request failed with status %d", resp.StatusCode)
+	}
+
+	var escalation Escalation
+	if err := json.NewDecoder(resp.Body).Decode(&escalation); err != nil {
+		return Escalation{}, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return escalation, nil
 }
