@@ -152,14 +152,16 @@ The skill calls the CLI under the hood, so make sure you're logged in first.
 ## Features
 
 - **RAG-powered answers** - Retrieves context from knowledge base
+- **Telegram bot** - Chat interface with real-time notifications (@AskKayaBot)
 - **LLM proxy** - Centralized routing through Cloudflare AI Gateway
 - **API keys** - Generate `sk-kaya-*` keys for programmatic access
 - **Usage tracking** - Per-request logging with tokens and costs
 - **Multi-model support** - Anthropic, OpenAI, OpenRouter (Qwen, DeepSeek)
-- **Auto-escalation** - Low confidence queries escalate to humans via Telegram
+- **Auto-escalation** - Low confidence queries (<75%) escalate to humans via Telegram
 - **Auto-learn** - Replies to escalations automatically add to KB
 - **Multi-tenant** - Client isolation with personal and global KB articles
-- **Billing integration** - Stripe subscription management
+- **Tiered pricing** - Subscription (retainer) or pay-per-query (credits)
+- **Billing integration** - Stripe subscription and credit purchase management
 
 ## Components
 
@@ -205,6 +207,70 @@ askkaya admin provision -e email@example.com --active    # Pre-provision account
 askkaya admin link-stripe -c <client-id> -s cus_xxx      # Link Stripe customer
 askkaya invite generate                                   # Generate invite code
 ```
+
+## Telegram Bot
+
+Chat with AskKaya directly from Telegram! Get instant answers and receive notifications when your escalations are answered.
+
+### Setup
+
+1. **Find the bot on Telegram:**
+   - Search for `@AskKayaBot` in Telegram
+   - Or click: https://t.me/AskKayaBot
+
+2. **Link your account:**
+   ```bash
+   askkaya telegram link
+   ```
+
+3. **Send the auth code to the bot:**
+   ```
+   /auth YOUR_CODE
+   ```
+
+### Commands
+
+```
+/start       - Welcome message with setup instructions
+/help        - Show available commands
+/status      - Check credits and subscription status
+/escalations - View your escalated questions
+/clear       - Clear conversation history
+```
+
+### Features
+
+- **Conversational interface** - Ask questions naturally via chat
+- **Context preservation** - Bot remembers previous messages in the conversation
+- **Real-time notifications** - Get notified when your escalated questions are answered
+- **Credit checking** - Automatic low credit warnings
+- **Escalation viewing** - Check status of questions being answered by Kaya
+
+### Example Usage
+
+```
+You: How do I configure OpenClaw?
+
+AskKayaBot: OpenClaw configuration is done through...
+
+You: What about the API keys?
+
+AskKayaBot: [Continues with context from previous question]
+```
+
+### Admin Bot (for Kaya)
+
+A separate admin bot (`@AskKayaCanEscalations`) receives escalation notifications:
+
+1. User asks a question with low confidence (<75%)
+2. Admin bot receives notification with question details
+3. Reply to the message with:
+   - `GLOBAL: [answer]` - Add to knowledge base (all clients)
+   - `PERSONAL: [answer]` - Add to knowledge base (user only)
+   - `[answer]` - Add to knowledge base (this client)
+   - `DISMISS` - Close ticket without saving
+
+4. User automatically receives your answer via Telegram and email
 
 ## LLM Proxy
 
@@ -292,9 +358,12 @@ OPENROUTER_API_KEY=sk-or-...
 ANTHROPIC_BASE_URL=https://gateway.ai.cloudflare.com/v1/{account}/{gateway}/anthropic
 OPENAI_BASE_URL=https://gateway.ai.cloudflare.com/v1/{account}/{gateway}/openai
 
-# Notifications
-TELEGRAM_BOT_TOKEN=...
+# Notifications (Admin escalations)
+TELEGRAM_ADMIN_BOT_TOKEN=...
 TELEGRAM_CHAT_ID=...
+
+# Telegram Bot (User-facing)
+TELEGRAM_BOT_TOKEN=...
 
 # Billing
 STRIPE_SECRET_KEY=sk_live_...
