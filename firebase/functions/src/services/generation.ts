@@ -9,8 +9,23 @@ import OpenAI from 'openai';
 import { type ModelConfig } from './model-config';
 
 // Confidence Thresholds
-const ESCALATION_THRESHOLD = 0.65;  // Below this, escalate to human
+const ESCALATION_THRESHOLD = 0.75;  // Below this, escalate to human (raised from 0.65)
 const CRITICAL_THRESHOLD = 0.4;     // Below this, refuse to answer
+
+// Patterns that indicate the AI doesn't have the answer
+const NO_KNOWLEDGE_PATTERNS = [
+  /does not contain/i,
+  /do not contain/i,
+  /don't have/i,
+  /do not have/i,
+  /cannot find/i,
+  /can't find/i,
+  /no information/i,
+  /not explicitly covered/i,
+  /not covered/i,
+  /is not available/i,
+  /isn't available/i,
+];
 
 // Cloudflare AI Gateway - unified /compat endpoint
 const CF_GATEWAY_URL = 'https://gateway.ai.cloudflare.com/v1/0c3240509aa27a7e737544ef66423171/kayaclaw/compat';
@@ -163,7 +178,12 @@ Please provide your answer, confidence score, and reasoning.`;
     answerText = redactPII(answerText);
 
     // Determine if escalation is needed
-    const shouldEscalate = confidenceScore < ESCALATION_THRESHOLD;
+    // Check both confidence threshold AND if response indicates no knowledge
+    const indicatesNoKnowledge = NO_KNOWLEDGE_PATTERNS.some(pattern =>
+      pattern.test(answerText)
+    );
+
+    const shouldEscalate = confidenceScore < ESCALATION_THRESHOLD || indicatesNoKnowledge;
 
     // If confidence is critically low, provide generic response
     if (confidenceScore < CRITICAL_THRESHOLD) {

@@ -31,7 +31,7 @@ The system uses AI-powered RAG to provide accurate answers from your
 organization's knowledge base.
 
 Run without arguments to launch the interactive TUI.`,
-	Version: "0.3.3",
+	Version: "0.3.4",
 	RunE:    runInteractive,
 }
 
@@ -112,6 +112,7 @@ func init() {
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(escalationsCmd)
 	rootCmd.AddCommand(creditsCmd)
+	rootCmd.AddCommand(telegramCmd)
 
 	// Admin-only commands - check role and conditionally hide
 	rootCmd.AddCommand(heartbeatCmd)

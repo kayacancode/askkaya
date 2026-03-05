@@ -18,6 +18,8 @@ import { getEscalations, getEscalation } from './api/escalations';
 import { authenticateRequest, authenticateUserOnly, type AuthenticatedRequest, type AuthResponse } from './middleware/auth';
 import { handleStripeWebhook, linkClientToStripe, createPaymentLink, getOrCreatePaymentLink } from './billing/stripe';
 import { createCreditPurchaseSession, getAvailableCreditPacks, type CreditPackType } from './billing/credits';
+import { handleTelegramUpdate as handleTelegramBotUpdate, type TelegramUpdate as TelegramBotUpdate } from './telegram/bot.js';
+import { createTelegramAuthCode } from './telegram/auth.js';
 import { verifyWebhookSignature, parseGitHubPush, type GitHubPushPayload } from './processing/webhook';
 import { generateEmbedding } from './services/embeddings';
 import {
@@ -147,7 +149,7 @@ export const onEscalationAnswered = onDocumentUpdated(
 );
 
 /**
- * HTTP endpoint: Telegram webhook receiver
+ * HTTP endpoint: Telegram webhook receiver (Admin notifications)
  */
 export const telegramWebhook = onRequest({ invoker: 'public' }, async (req, res) => {
   const startTime = Date.now();
@@ -206,6 +208,114 @@ export const telegramWebhook = onRequest({ invoker: 'public' }, async (req, res)
       error: (error as Error).message,
     });
   }
+});
+
+/**
+ * HTTP endpoint: Telegram Bot webhook (User-facing bot)
+ * Handles incoming messages from users querying AskKaya via Telegram
+ */
+export const telegramBotWebhook = onRequest({ invoker: 'public' }, async (req, res) => {
+  const startTime = Date.now();
+
+  logger.logRequest(req.method, req.path, {
+    userAgent: req.headers['user-agent'],
+  });
+
+  // Only accept POST requests
+  if (req.method !== 'POST') {
+    res.status(405).send('Method Not Allowed');
+    return;
+  }
+
+  try {
+    const update = req.body as TelegramBotUpdate;
+    const botToken = process.env['TELEGRAM_BOT_TOKEN'];
+
+    if (!botToken) {
+      logger.error('TELEGRAM_BOT_TOKEN not configured', undefined);
+      res.status(500).json({ error: 'Bot not configured' });
+      return;
+    }
+
+    if (!update) {
+      res.status(400).send('Invalid request body');
+      return;
+    }
+
+    await handleTelegramBotUpdate(update, botToken);
+
+    const durationMs = Date.now() - startTime;
+    logger.logRequestComplete(req.method, req.path, 200, durationMs, {
+      updateId: update.update_id,
+    });
+
+    res.status(200).json({ ok: true });
+  } catch (error) {
+    const durationMs = Date.now() - startTime;
+    logger.error('Telegram bot webhook error', error as Error, {
+      durationMs,
+    });
+
+    logger.logRequestComplete(req.method, req.path, 500, durationMs);
+
+    res.status(500).json({
+      ok: false,
+      error: (error as Error).message,
+    });
+  }
+});
+
+/**
+ * HTTP endpoint: Generate Telegram auth code
+ * Creates a one-time code for linking Telegram accounts to AskKaya
+ *
+ * POST /telegramAuthApi
+ * Requires authentication
+ * Returns: { code: string }
+ */
+export const telegramAuthApi = onRequest({ invoker: 'public' }, async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Client-ID');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+
+  const authReq = req as unknown as AuthenticatedRequest;
+  const authRes = res as unknown as AuthResponse;
+
+  await authenticateRequest(authReq, authRes, async () => {
+    try {
+      const clientId = req.headers['x-client-id'] as string;
+      const idToken = req.headers.authorization?.replace('Bearer ', '') || '';
+
+      if (!clientId) {
+        res.status(400).json({ error: 'Missing X-Client-ID header' });
+        return;
+      }
+
+      const code = await createTelegramAuthCode(clientId, idToken);
+
+      res.status(201).json({
+        success: true,
+        code,
+        message: `Send this to the Telegram bot: /auth ${code}`,
+        expires_in: 300, // 5 minutes
+      });
+
+      logger.info('Generated Telegram auth code', { client_id: clientId });
+    } catch (error) {
+      logger.error('Failed to generate auth code', error as Error);
+      res.status(500).json({ error: 'Failed to generate auth code' });
+    }
+  });
 });
 
 /**

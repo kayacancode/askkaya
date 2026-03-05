@@ -52,10 +52,10 @@ export async function sendMessage(
   chatId: string,
   text: string
 ): Promise<SendMessageResult> {
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  
+  const botToken = process.env.TELEGRAM_ADMIN_BOT_TOKEN;
+
   if (!botToken) {
-    throw new Error('TELEGRAM_BOT_TOKEN environment variable is not set');
+    throw new Error('TELEGRAM_ADMIN_BOT_TOKEN environment variable is not set');
   }
   
   const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
