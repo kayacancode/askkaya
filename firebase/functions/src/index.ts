@@ -301,6 +301,35 @@ export const telegramAuthApi = onRequest({ invoker: 'public' }, async (req, res)
         return;
       }
 
+      // Verify client has completed signup and has active billing
+      const clientDoc = await getDb().collection('clients').doc(clientId).get();
+
+      if (!clientDoc.exists) {
+        res.status(404).json({ error: 'Client not found' });
+        return;
+      }
+
+      const clientData = clientDoc.data();
+      const billingStatus = clientData?.billing_status;
+      const clientType = clientData?.client_type || 'retainer';
+
+      // Check billing status based on client type
+      if (clientType === 'retainer' && billingStatus !== 'active') {
+        res.status(403).json({
+          error: 'Account not active',
+          message: 'Please complete your subscription setup before linking Telegram.',
+        });
+        return;
+      }
+
+      if (clientType === 'pay_per_query' && billingStatus !== 'active') {
+        res.status(403).json({
+          error: 'Account not active',
+          message: 'Your account must be activated before linking Telegram.',
+        });
+        return;
+      }
+
       const code = await createTelegramAuthCode(clientId, idToken);
 
       res.status(201).json({

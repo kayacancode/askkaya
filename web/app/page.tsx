@@ -12,6 +12,7 @@ const demoResponses: Record<string, string> = {
   'setup': "To set up OpenClaw:\n1. One-liner install: curl -fsSL https://openclaw.ai/install.sh | bash\n2. Or via NPM: npm i -g openclaw then openclaw onboard\n3. Or build from source: clone the repo and run pnpm build\n\nOnce installed, connect it to your preferred chat app (WhatsApp, Telegram, Discord, etc.) and start chatting with your AI assistant!",
   'honcho': "Honcho is a memory/context management system for AI agents. Kaya uses it to give her AI tools persistent memory across sessions—it's what powers the 'learns from every interaction' part of AskKaya. You can configure it via the Honcho MCP server or SDK to maintain context across conversations.",
   'contact': "You can reach Kaya at kaya@forever22studios.com. She's open to collaborations, consulting, and interesting projects—especially anything involving AI agents, robotics, or full-stack development.",
+  'telegram': "AskKaya has a Telegram bot (@AskKayaBot) that lets you chat directly from Telegram! Just link your account with 'askkaya telegram link', send the code to the bot with '/auth YOUR_CODE', and start asking questions. You'll get instant answers and real-time notifications when your escalated questions are answered. Commands: /start, /help, /status, /escalations, /clear.",
   'mcp': "MCP (Model Context Protocol) is how AI assistants connect to external tools and data sources. It's the protocol that lets Claude Code, OpenClaw, and other AI tools call external APIs and services. AskKaya is available as an MCP server so your AI assistant can query Kaya's knowledge base automatically.",
   'reachy': "Kaya is building an autonomous conversational robot using Reachy Mini hardware. It has facial recognition (face_identity.py backend), voice I/O with Whisper STT and ElevenLabs TTS, and uses Claude for reasoning via MCP integration. The robot can recognize faces, have natural conversations, and express itself through animations.",
   'robot': "Kaya is building an autonomous conversational robot using Reachy Mini hardware. It has facial recognition (face_identity.py backend), voice I/O with Whisper STT and ElevenLabs TTS, and uses Claude for reasoning via MCP integration. The robot can recognize faces, have natural conversations, and express itself through animations.",
@@ -383,6 +384,19 @@ curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/insta
             <div className="feature-card">
               <div className="feature-icon">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ color: '#D97706' }}>
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                </svg>
+              </div>
+              <h3 className="feature-title">Telegram Bot</h3>
+              <p className="feature-desc">
+                Chat with AskKaya directly from Telegram. Get instant answers
+                and real-time notifications when your escalations are answered.
+              </p>
+            </div>
+
+            <div className="feature-card">
+              <div className="feature-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ color: '#D97706' }}>
                   <rect x="4" y="4" width="16" height="16" rx="2" />
                   <path d="M9 9h6v6H9z" />
                   <path d="M9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3" />
@@ -412,7 +426,7 @@ curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/insta
             <div className="step-content">
               <h3 className="step-title">Ask a Question</h3>
               <p className="step-desc">
-                Query via CLI, MCP server, or AI assistant skill.
+                Query via CLI, Telegram bot, MCP server, or AI assistant skill.
                 Natural language, code snippets, or screenshots.
               </p>
             </div>
