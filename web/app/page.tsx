@@ -31,7 +31,7 @@ function queryAskKaya(question: string): string {
 }
 
 export default function LandingPage() {
-  const [activeTab, setActiveTab] = useState<'cli' | 'mcp' | 'skill'>('cli')
+  const [activeTab, setActiveTab] = useState<'cli' | 'mcp' | 'skill' | 'telegram'>('cli')
   const [scrolled, setScrolled] = useState(false)
   const [messages, setMessages] = useState<{ role: 'user' | 'tool' | 'assistant', text: string, toolName?: string }[]>([])
   const [input, setInput] = useState('')
@@ -124,7 +124,25 @@ curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/insta
 # Then use in your AI assistant
 /askkaya How do I set up OpenClaw?
 
-# The skill calls the CLI under the hood`
+# The skill calls the CLI under the hood`,
+    telegram: `# Find the bot on Telegram
+# Search for @AskKayaBot or visit https://t.me/AskKayaBot
+
+# Link your account
+askkaya telegram link
+
+# Send the code to the bot
+/auth YOUR_CODE
+
+# Start chatting!
+# Just send any message to ask questions
+
+# Commands:
+/start       - Welcome and setup
+/help        - Show commands
+/status      - Check credits
+/escalations - View escalations
+/clear       - Clear history`
   }
 
   return (
@@ -477,7 +495,7 @@ curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/insta
         <div className="integrate-content">
           <span className="section-label">Integration</span>
           <h2 className="section-title">
-            Three ways to connect
+            Four ways to connect
           </h2>
 
           <div className="integration-tabs">
@@ -499,6 +517,12 @@ curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/insta
             >
               AI Skill
             </button>
+            <button
+              className={`integration-tab ${activeTab === 'telegram' ? 'active' : ''}`}
+              onClick={() => setActiveTab('telegram')}
+            >
+              Telegram Bot
+            </button>
           </div>
 
           <div className="code-block">
@@ -510,6 +534,7 @@ curl -sL https://raw.githubusercontent.com/kayacancode/askkaya/main/skills/insta
                 {activeTab === 'cli' && 'terminal'}
                 {activeTab === 'mcp' && 'mcp-config.json'}
                 {activeTab === 'skill' && 'terminal'}
+                {activeTab === 'telegram' && 'terminal'}
               </span>
             </div>
             <div className="code-content">
