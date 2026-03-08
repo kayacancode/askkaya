@@ -100,7 +100,7 @@ func runTelegramLink(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 	fmt.Println("Steps:")
 	fmt.Println("1. Open Telegram")
-	fmt.Println("2. Find the AskKaya bot (@askkaya_bot)")
+	fmt.Println("2. Find the AskKaya bot (@AskKayaBot)")
 	fmt.Println("3. Send this message:")
 	fmt.Println()
 	fmt.Printf("   /auth %s\n", result.Code)
@@ -112,7 +112,7 @@ func runTelegramLink(cmd *cobra.Command, args []string) error {
 }
 
 func openBrowserToBot() error {
-	botUsername := "askkaya_bot" // Update this when you create the actual bot
+	botUsername := "AskKayaBot"
 	url := fmt.Sprintf("https://t.me/%s", botUsername)
 	return openBrowser(url)
 }
