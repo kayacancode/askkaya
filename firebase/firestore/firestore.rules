@@ -1,80 +1,322 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper functions
+
+    // ========================================
+    // HELPER FUNCTIONS
+    // ========================================
+
     function isAuthenticated() {
       return request.auth != null;
     }
-    
-    function isClientOwner(clientId) {
-      return isAuthenticated() && 
-             exists(/databases/$(database)/documents/clients/$(clientId)/users/$(request.auth.uid));
+
+    function isSystemAdmin() {
+      return isAuthenticated() && request.auth.token.admin == true;
     }
-    
-    function isAdmin() {
-      return isAuthenticated() && 
-             request.auth.token.admin == true;
+
+    // Get membership document for current user in a tenant
+    function getMembership(tenantId) {
+      return get(/databases/$(database)/documents/memberships/$(request.auth.uid + '_' + tenantId));
     }
-    
-    // Clients collection - only accessible to authorized users
-    match /clients/{clientId} {
-      // Clients can read their own data
-      allow read: if isClientOwner(clientId) || isAdmin();
-      // Only admins can create/update/delete clients
-      allow write: if isAdmin();
-      
-      // Client users subcollection
-      match /users/{userId} {
-        allow read: if isClientOwner(clientId) || isAdmin();
-        allow write: if isAdmin();
-      }
-      
-      // Usage statistics - read-only for clients
-      match /usage/{usageId} {
-        allow read: if isClientOwner(clientId) || isAdmin();
-        allow write: if false; // Only Cloud Functions can write
-      }
-      
-      // Billing information - read-only for clients
-      match /billing/{billingId} {
-        allow read: if isClientOwner(clientId) || isAdmin();
-        allow write: if false; // Only Cloud Functions can write
-      }
+
+    // Check if user has a membership in the tenant
+    function isInTenant(tenantId) {
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/memberships/$(request.auth.uid + '_' + tenantId));
     }
-    
-    // Knowledge base articles - client-specific or global
-    match /kb_articles/{articleId} {
-      // Read: clients can read their own articles or global articles
-      allow read: if isAuthenticated() && (
-        !resource.data.keys().hasAny(['clientId']) ||
-        isClientOwner(resource.data.clientId) ||
-        isAdmin()
+
+    // Check if user is owner or admin of the tenant
+    function isTenantAdmin(tenantId) {
+      return isInTenant(tenantId) &&
+             getMembership(tenantId).data.role in ['owner', 'admin'];
+    }
+
+    // Check if user is a member of a specific team within tenant
+    function isTeamMember(tenantId, teamId) {
+      return isInTenant(tenantId) &&
+             teamId in getMembership(tenantId).data.teamIds;
+    }
+
+    // Check visibility-based access for a resource
+    // Resources must have: visibility, tenantId, and optionally ownerUid/teamId
+    function canAccessByVisibility(resource, tenantId) {
+      let visibility = resource.data.visibility;
+      return (
+        // Tenant-level: any tenant member
+        (visibility == 'tenant' && isInTenant(tenantId)) ||
+        // Team-level: team members only
+        (visibility == 'team' && isTeamMember(tenantId, resource.data.teamId)) ||
+        // Private: owner only
+        (visibility == 'private' && request.auth.uid == resource.data.ownerUid)
       );
-      // Write: only admins
-      allow write: if isAdmin();
     }
-    
-    // Escalations - clients can read their own, admins can read/write all
+
+    // ========================================
+    // NEW MULTI-TENANT COLLECTIONS
+    // ========================================
+
+    // Tenants - organization boundaries
+    match /tenants/{tenantId} {
+      // Read: tenant members can read their tenant
+      allow read: if isInTenant(tenantId) || isSystemAdmin();
+
+      // Create: any authenticated user can create a tenant (becomes owner)
+      allow create: if isAuthenticated() &&
+                      request.resource.data.ownerUid == request.auth.uid;
+
+      // Update: only tenant admins
+      allow update: if isTenantAdmin(tenantId) || isSystemAdmin();
+
+      // Delete: never (soft delete only via status field)
+      allow delete: if false;
+    }
+
+    // Memberships - user to tenant/team mapping
+    // Document ID format: {uid}_{tenantId}
+    match /memberships/{membershipId} {
+      // Read: the user themselves or tenant admins
+      allow read: if isAuthenticated() && (
+        resource.data.uid == request.auth.uid ||
+        isTenantAdmin(resource.data.tenantId) ||
+        isSystemAdmin()
+      );
+
+      // Create: tenant admins can add members
+      allow create: if isTenantAdmin(request.resource.data.tenantId) || isSystemAdmin();
+
+      // Update: tenant admins or user updating their own preferences (limited fields)
+      allow update: if isTenantAdmin(resource.data.tenantId) ||
+                      isSystemAdmin() ||
+                      (resource.data.uid == request.auth.uid &&
+                       request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['defaultTwinId', 'displayName']));
+
+      // Delete: tenant admins only
+      allow delete: if isTenantAdmin(resource.data.tenantId) || isSystemAdmin();
+    }
+
+    // Twins - queryable knowledge personas
+    match /twins/{twinId} {
+      // Read: based on visibility OR tenant admin
+      allow read: if canAccessByVisibility(resource, resource.data.tenantId) ||
+                    isTenantAdmin(resource.data.tenantId) ||
+                    isSystemAdmin();
+
+      // Create: tenant members can create person twins for themselves,
+      //         admins can create team/org twins
+      allow create: if isInTenant(request.resource.data.tenantId) && (
+        // Person twin: user creating their own
+        (request.resource.data.type == 'person' &&
+         request.resource.data.ownerUid == request.auth.uid) ||
+        // Team/org twin: admin only
+        (request.resource.data.type in ['team', 'organization'] &&
+         isTenantAdmin(request.resource.data.tenantId))
+      );
+
+      // Update: owner for person twin, admin for team/org twin
+      allow update: if (
+        (resource.data.type == 'person' && resource.data.ownerUid == request.auth.uid) ||
+        isTenantAdmin(resource.data.tenantId) ||
+        isSystemAdmin()
+      );
+
+      // Delete: tenant admin only
+      allow delete: if isTenantAdmin(resource.data.tenantId) || isSystemAdmin();
+    }
+
+    // Sources - ingested content metadata
+    match /sources/{sourceId} {
+      // Read: based on visibility
+      allow read: if canAccessByVisibility(resource, resource.data.tenantId) ||
+                    isTenantAdmin(resource.data.tenantId) ||
+                    isSystemAdmin();
+
+      // Create: tenant members for their own content
+      allow create: if isInTenant(request.resource.data.tenantId) && (
+        // Private: must be owner
+        (request.resource.data.visibility == 'private' &&
+         request.resource.data.ownerUid == request.auth.uid) ||
+        // Team: must be team member
+        (request.resource.data.visibility == 'team' &&
+         isTeamMember(request.resource.data.tenantId, request.resource.data.teamId)) ||
+        // Tenant: admin only
+        (request.resource.data.visibility == 'tenant' &&
+         isTenantAdmin(request.resource.data.tenantId))
+      );
+
+      // Update/Delete: owner or admin
+      allow update, delete: if (resource.data.ownerUid == request.auth.uid) ||
+                              isTenantAdmin(resource.data.tenantId) ||
+                              isSystemAdmin();
+    }
+
+    // Chunks - searchable content with embeddings
+    // WRITE: Only Cloud Functions (Admin SDK) can write chunks
+    match /chunks/{chunkId} {
+      // Read: based on visibility
+      allow read: if canAccessByVisibility(resource, resource.data.tenantId) ||
+                    isTenantAdmin(resource.data.tenantId) ||
+                    isSystemAdmin();
+
+      // Write: only via Admin SDK (Cloud Functions)
+      allow write: if false;
+    }
+
+    // Queries - audit log of all queries
+    // CREATE: Only Cloud Functions can create
+    match /queries/{queryId} {
+      // Read: the requester or tenant admins
+      allow read: if isAuthenticated() && (
+        resource.data.requesterUid == request.auth.uid ||
+        isTenantAdmin(resource.data.tenantId) ||
+        isSystemAdmin()
+      );
+
+      // Create: only via Admin SDK
+      allow create: if false;
+
+      // Update: admin can update escalation status only
+      allow update: if (isTenantAdmin(resource.data.tenantId) || isSystemAdmin()) &&
+                      request.resource.data.diff(resource.data).affectedKeys()
+                        .hasOnly(['escalation']);
+
+      // Delete: never (audit trail)
+      allow delete: if false;
+    }
+
+    // Teams - team structure within tenant
+    match /teams/{teamId} {
+      // Read: tenant members
+      allow read: if isInTenant(resource.data.tenantId) || isSystemAdmin();
+
+      // Write: tenant admin only
+      allow create, update, delete: if isTenantAdmin(request.resource.data.tenantId) || isSystemAdmin();
+    }
+
+    // Ingestion Jobs - async ingestion tracking
+    match /ingestionJobs/{jobId} {
+      // Read: tenant members
+      allow read: if isInTenant(resource.data.tenantId) || isSystemAdmin();
+
+      // Write: only via Admin SDK
+      allow write: if false;
+    }
+
+    // ========================================
+    // LEGACY COLLECTIONS (Migration Period)
+    // Keep these working during transition
+    // ========================================
+
+    // Legacy helper for old client-based auth
+    function isClientOwner(clientId) {
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.client_id == clientId;
+    }
+
+    // Legacy: clients collection
+    match /clients/{clientId} {
+      allow read: if isClientOwner(clientId) || isSystemAdmin();
+      allow write: if isSystemAdmin();
+
+      match /users/{userId} {
+        allow read: if isClientOwner(clientId) || isSystemAdmin();
+        allow write: if isSystemAdmin();
+      }
+
+      match /usage/{usageId} {
+        allow read: if isClientOwner(clientId) || isSystemAdmin();
+        allow write: if false;
+      }
+
+      match /billing/{billingId} {
+        allow read: if isClientOwner(clientId) || isSystemAdmin();
+        allow write: if false;
+      }
+    }
+
+    // Legacy: users collection (kept for user->client mapping during migration)
+    match /users/{userId} {
+      allow read: if request.auth.uid == userId || isSystemAdmin();
+      allow write: if isSystemAdmin();
+
+      // API keys subcollection
+      match /apiKeys/{keyId} {
+        allow read: if request.auth.uid == userId || isSystemAdmin();
+        allow create: if request.auth.uid == userId;
+        allow update: if request.auth.uid == userId;
+        allow delete: if request.auth.uid == userId;
+      }
+    }
+
+    // Legacy: kb_articles collection
+    match /kb_articles/{articleId} {
+      allow read: if isAuthenticated() && (
+        resource.data.is_global == true ||
+        !resource.data.keys().hasAny(['client_id']) ||
+        isClientOwner(resource.data.client_id) ||
+        isSystemAdmin()
+      );
+      allow write: if isSystemAdmin();
+    }
+
+    // Legacy: escalations collection
     match /escalations/{escalationId} {
-      allow read: if isClientOwner(resource.data.clientId) || isAdmin();
-      allow create: if false; // Only Cloud Functions can create
-      allow update: if isAdmin(); // Admins can update status
-      allow delete: if false; // Never delete, keep audit trail
+      allow read: if isClientOwner(resource.data.clientId) || isSystemAdmin();
+      allow create: if false;
+      allow update: if isSystemAdmin();
+      allow delete: if false;
     }
-    
-    // Rate limiting documents - internal use only
-    match /rate_limits/{clientId} {
-      allow read, write: if false; // Only Cloud Functions
+
+    // Legacy: invite_codes collection
+    match /invite_codes/{codeId} {
+      allow read: if isAuthenticated();
+      allow write: if isSystemAdmin();
     }
-    
-    // Stripe webhook events - internal use only
-    match /stripe_events/{eventId} {
-      allow read: if isAdmin();
-      allow write: if false; // Only Cloud Functions
+
+    // Legacy: telegram_users collection
+    match /telegram_users/{telegramId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
     }
-    
-    // Default deny all
+
+    // Legacy: telegram_auth_codes collection
+    match /telegram_auth_codes/{codeId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // Legacy: telegram_conversations collection
+    match /telegram_conversations/{telegramId}/messages/{messageId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    // ========================================
+    // INTERNAL COLLECTIONS
+    // ========================================
+
+    // Rate limiting - internal use only
+    match /rate_limits/{id} {
+      allow read, write: if false;
+    }
+
+    // LLM configuration - read by authenticated, write by admin
+    match /llmConfig/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isSystemAdmin();
+    }
+
+    // KB processing queue - internal use only
+    match /kb_processing_queue/{itemId} {
+      allow read: if isSystemAdmin();
+      allow write: if false;
+    }
+
+    // ========================================
+    // DEFAULT DENY
+    // ========================================
+
     match /{document=**} {
       allow read, write: if false;
     }

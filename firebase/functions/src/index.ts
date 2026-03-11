@@ -39,6 +39,10 @@ import { provisionAccount } from './api/provision';
 import { handleMcpRequest } from './mcp/transport';
 import * as admin from 'firebase-admin';
 
+// Multi-tenant twins architecture imports
+import { processAsk, type AskRequest, type AskResponse, type AskError } from './api/ask';
+import { listTwins, getTwin, createTwin, updateTwin, deleteTwin, type CreateTwinRequest, type UpdateTwinRequest } from './api/twins';
+
 // LLM Proxy imports
 import { apiKeyAuthMiddleware } from './middleware/api-key-auth';
 import { createAPIKey, listAPIKeys, revokeAPIKey, verifyAPIKey } from './services/api-keys';
@@ -1527,6 +1531,294 @@ export const mcpServer = onRequest(
     await handleMcpRequest(req, res);
   }
 );
+
+// =============================================================================
+// MULTI-TENANT TWINS ARCHITECTURE ENDPOINTS
+// =============================================================================
+
+/**
+ * HTTP endpoint: Ask API (Twins Architecture)
+ * Primary query endpoint with twin targeting
+ *
+ * POST /askApi
+ * Body: { target?: string, question: string, image?: {...}, includeTeamContext?: boolean }
+ * Headers: Authorization, X-Tenant-ID
+ */
+export const askApi = onRequest({ invoker: 'public' }, async (req, res) => {
+  const startTime = Date.now();
+
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Tenant-ID');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+
+  const authReq = req as unknown as AuthenticatedRequest;
+  const authRes = res as unknown as AuthResponse;
+
+  await authenticateUserOnly(authReq, authRes, async () => {
+    try {
+      const user = authReq.user;
+      if (!user) {
+        res.status(401).json({ error: 'Not authenticated' });
+        return;
+      }
+
+      // Get tenant ID from header or user's default tenant
+      let tenantId = req.headers['x-tenant-id'] as string;
+
+      if (!tenantId) {
+        // Look up user's default tenant
+        const userDoc = await getDb().collection('users').doc(user.uid).get();
+        tenantId = userDoc.data()?.default_tenant_id;
+      }
+
+      if (!tenantId) {
+        res.status(400).json({ error: 'Missing X-Tenant-ID header' });
+        return;
+      }
+
+      const request = req.body as AskRequest;
+      const result = await processAsk(user.uid, tenantId, request);
+
+      // Check if error response
+      if ('error' in result) {
+        const errorResult = result as AskError;
+        const statusCode = errorResult.code === 'access_denied' ? 403 :
+                          errorResult.code === 'not_found' ? 404 : 400;
+        res.status(statusCode).json(result);
+        return;
+      }
+
+      const durationMs = Date.now() - startTime;
+      logger.logRequestComplete(req.method, req.path, 200, durationMs, {
+        tenantId,
+        targetTwinId: (result as AskResponse).targetTwin.id,
+        escalated: (result as AskResponse).escalated,
+      });
+
+      res.status(200).json(result);
+    } catch (error) {
+      const durationMs = Date.now() - startTime;
+      logger.error('Ask API error', error as Error, { durationMs });
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+});
+
+/**
+ * HTTP endpoint: Twins API
+ * CRUD operations for twins
+ *
+ * GET /twinsApi - List accessible twins
+ * GET /twinsApi/:twinId - Get specific twin
+ * POST /twinsApi - Create twin
+ * PUT /twinsApi/:twinId - Update twin
+ * DELETE /twinsApi/:twinId - Delete twin
+ */
+export const twinsApi = onRequest({ invoker: 'public' }, async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Tenant-ID');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  const authReq = req as unknown as AuthenticatedRequest;
+  const authRes = res as unknown as AuthResponse;
+
+  await authenticateUserOnly(authReq, authRes, async () => {
+    try {
+      const user = authReq.user;
+      if (!user) {
+        res.status(401).json({ error: 'Not authenticated' });
+        return;
+      }
+
+      // Get tenant ID
+      let tenantId = req.headers['x-tenant-id'] as string;
+      if (!tenantId) {
+        const userDoc = await getDb().collection('users').doc(user.uid).get();
+        tenantId = userDoc.data()?.default_tenant_id;
+      }
+
+      if (!tenantId) {
+        res.status(400).json({ error: 'Missing X-Tenant-ID header' });
+        return;
+      }
+
+      // Extract twin ID from path
+      const pathParts = req.path.split('/').filter(p => p);
+      const twinId = pathParts.length > 1 ? pathParts[pathParts.length - 1] : null;
+
+      // GET - List or get specific twin
+      if (req.method === 'GET') {
+        if (twinId && twinId !== 'twinsApi') {
+          const twin = await getTwin(user.uid, tenantId, twinId);
+          if (!twin) {
+            res.status(404).json({ error: 'Twin not found' });
+            return;
+          }
+          res.status(200).json(twin);
+        } else {
+          const result = await listTwins(user.uid, tenantId);
+          res.status(200).json(result);
+        }
+        return;
+      }
+
+      // POST - Create twin
+      if (req.method === 'POST') {
+        const request = req.body as CreateTwinRequest;
+        if (!request.name || !request.slug || !request.type) {
+          res.status(400).json({ error: 'name, slug, and type are required' });
+          return;
+        }
+        const result = await createTwin(user.uid, tenantId, request);
+        res.status(201).json(result);
+        return;
+      }
+
+      // PUT - Update twin
+      if (req.method === 'PUT') {
+        if (!twinId || twinId === 'twinsApi') {
+          res.status(400).json({ error: 'Twin ID required' });
+          return;
+        }
+        const request = req.body as UpdateTwinRequest;
+        const result = await updateTwin(user.uid, tenantId, twinId, request);
+        res.status(200).json(result);
+        return;
+      }
+
+      // DELETE - Delete twin
+      if (req.method === 'DELETE') {
+        if (!twinId || twinId === 'twinsApi') {
+          res.status(400).json({ error: 'Twin ID required' });
+          return;
+        }
+        const result = await deleteTwin(user.uid, tenantId, twinId);
+        res.status(200).json(result);
+        return;
+      }
+
+      res.status(405).json({ error: 'Method Not Allowed' });
+    } catch (error) {
+      const err = error as Error;
+      if (err.message === 'Access denied' || err.message.includes('Access denied')) {
+        res.status(403).json({ error: err.message });
+        return;
+      }
+      if (err.message === 'Twin not found' || err.message.includes('not found')) {
+        res.status(404).json({ error: err.message });
+        return;
+      }
+      if (err.message.includes('already exists')) {
+        res.status(409).json({ error: err.message });
+        return;
+      }
+      logger.error('Twins API error', err);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+});
+
+/**
+ * HTTP endpoint: Updated meApi with tenant info
+ * Returns user info including tenant memberships
+ */
+export const meApiV2 = onRequest({ invoker: 'public' }, async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  if (req.method !== 'GET') {
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
+  }
+
+  const authReq = req as unknown as AuthenticatedRequest;
+  const authRes = res as unknown as AuthResponse;
+
+  await authenticateUserOnly(authReq, authRes, async () => {
+    try {
+      const user = authReq.user;
+      if (!user) {
+        res.status(401).json({ error: 'Not authenticated' });
+        return;
+      }
+
+      const db = getDb();
+
+      // Get user's memberships
+      const membershipsSnapshot = await db
+        .collection('memberships')
+        .where('uid', '==', user.uid)
+        .get();
+
+      const memberships = membershipsSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          tenantId: data.tenantId,
+          role: data.role,
+          teamIds: data.teamIds || [],
+          defaultTwinId: data.defaultTwinId,
+        };
+      });
+
+      // Get tenant details for each membership
+      const tenantIds = memberships.map(m => m.tenantId);
+      const tenants: Array<{ id: string; name: string; slug: string }> = [];
+
+      for (const tenantId of tenantIds) {
+        const tenantDoc = await db.collection('tenants').doc(tenantId).get();
+        if (tenantDoc.exists) {
+          const data = tenantDoc.data()!;
+          tenants.push({
+            id: tenantId,
+            name: data.name,
+            slug: data.slug,
+          });
+        }
+      }
+
+      // Get user doc for default tenant and legacy client_id
+      const userDoc = await db.collection('users').doc(user.uid).get();
+      const userData = userDoc.exists ? userDoc.data() : {};
+
+      res.status(200).json({
+        user_id: user.uid,
+        email: user.email,
+        // Legacy client info (for backward compatibility)
+        client_id: userData?.client_id,
+        // New tenant info
+        default_tenant_id: userData?.default_tenant_id || tenantIds[0],
+        memberships,
+        tenants,
+        // Role from first tenant (for backward compatibility)
+        role: memberships[0]?.role || (userData?.is_admin ? 'admin' : 'member'),
+      });
+    } catch (error) {
+      logger.error('meApiV2 error', error as Error);
+      res.status(500).json({ error: 'Internal server error' });
+    }
+  });
+});
 
 // =============================================================================
 // LLM PROXY ENDPOINTS

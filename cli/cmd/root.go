@@ -109,6 +109,8 @@ func init() {
 	// Add subcommands (visible to everyone)
 	rootCmd.AddCommand(authCmd)
 	rootCmd.AddCommand(queryCmd)
+	rootCmd.AddCommand(askCmd)  // New twins-based ask command
+	rootCmd.AddCommand(twinCmd) // Twin management
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(escalationsCmd)
 	rootCmd.AddCommand(creditsCmd)

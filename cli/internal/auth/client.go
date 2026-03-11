@@ -16,10 +16,22 @@ type AuthTokens struct {
 	RefreshToken string
 	ExpiresIn    int
 	ExpiresAt    time.Time
-	ClientID     string // User's associated client ID
+	ClientID     string // User's associated client ID (legacy)
 	UserID       string // Firebase user ID
 	Email        string // User's email
 	Role         string // User's role: "admin" or "client"
+	// Multi-tenant fields
+	TenantID    string       // Default tenant ID
+	Memberships []Membership // User's tenant memberships
+}
+
+// Membership represents a user's membership in a tenant
+type Membership struct {
+	TenantID      string   `json:"tenantId"`
+	TenantName    string   `json:"tenantName"`
+	Role          string   `json:"role"`
+	TeamIDs       []string `json:"teamIds"`
+	DefaultTwinID string   `json:"defaultTwinId"`
 }
 
 // AuthClient is a Firebase Auth REST client

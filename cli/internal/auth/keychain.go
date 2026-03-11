@@ -93,6 +93,9 @@ func (k *Keychain) LoadAndRefreshTokens(apiKey string) (*AuthTokens, error) {
 		newTokens.UserID = tokens.UserID
 		newTokens.Email = tokens.Email
 		newTokens.Role = tokens.Role
+		// Preserve tenant info
+		newTokens.TenantID = tokens.TenantID
+		newTokens.Memberships = tokens.Memberships
 
 		// Save refreshed tokens
 		if err := k.StoreTokens(*newTokens); err != nil {
