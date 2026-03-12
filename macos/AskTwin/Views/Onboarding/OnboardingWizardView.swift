@@ -1,7 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// 3-step onboarding wizard for new users
+/// 3-step onboarding wizard for new users (Granola Dark Style)
 struct OnboardingWizardView: View {
     @EnvironmentObject var appState: AppState
     @State private var currentStep = 0
@@ -12,42 +12,50 @@ struct OnboardingWizardView: View {
 
     let onComplete: () -> Void
 
+    // Granola colors
+    private let bgColor = Color(red: 0.11, green: 0.11, blue: 0.12)
+    private let accentColor = Color.white
+
     var body: some View {
-        VStack(spacing: 0) {
-            // Progress indicator
-            HStack(spacing: 4) {
-                ForEach(0..<3) { index in
-                    Capsule()
-                        .fill(index <= currentStep ? Color.blue : Color.secondary.opacity(0.3))
-                        .frame(height: 4)
+        ZStack {
+            bgColor.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                // Progress indicator
+                HStack(spacing: 6) {
+                    ForEach(0..<3) { index in
+                        Capsule()
+                            .fill(index <= currentStep ? accentColor : Color.white.opacity(0.15))
+                            .frame(height: 3)
+                    }
                 }
+                .padding(.horizontal, 60)
+                .padding(.top, 24)
+
+                // Step content
+                TabView(selection: $currentStep) {
+                    IngestionStepView(
+                        droppedFiles: $droppedFiles,
+                        isProcessing: $isProcessing,
+                        onContinue: { processFiles() }
+                    )
+                    .tag(0)
+
+                    InsightsStepView(
+                        insights: extractedInsights,
+                        isLoading: isProcessing,
+                        onContinue: { currentStep = 2 }
+                    )
+                    .tag(1)
+
+                    IntegrationsStepView(
+                        selectedIntegrations: $selectedIntegrations,
+                        onComplete: completeOnboarding
+                    )
+                    .tag(2)
+                }
+                .tabViewStyle(.automatic)
             }
-            .padding(.horizontal, 40)
-            .padding(.top, 20)
-
-            // Step content
-            TabView(selection: $currentStep) {
-                IngestionStepView(
-                    droppedFiles: $droppedFiles,
-                    isProcessing: $isProcessing,
-                    onContinue: { processFiles() }
-                )
-                .tag(0)
-
-                InsightsStepView(
-                    insights: extractedInsights,
-                    isLoading: isProcessing,
-                    onContinue: { currentStep = 2 }
-                )
-                .tag(1)
-
-                IntegrationsStepView(
-                    selectedIntegrations: $selectedIntegrations,
-                    onComplete: completeOnboarding
-                )
-                .tag(2)
-            }
-            .tabViewStyle(.automatic)
         }
         .frame(minWidth: 600, minHeight: 500)
     }
@@ -167,7 +175,7 @@ struct OnboardingWizardView: View {
     }
 }
 
-// MARK: - Step 1: Ingestion
+// MARK: - Step 1: Ingestion (Granola Dark)
 
 struct IngestionStepView: View {
     @Binding var droppedFiles: [URL]
@@ -176,94 +184,115 @@ struct IngestionStepView: View {
 
     @State private var isTargeted = false
 
+    // Granola colors
+    private let bgColor = Color(red: 0.11, green: 0.11, blue: 0.12)
+    private let surfaceColor = Color(red: 0.14, green: 0.14, blue: 0.15)
+    private let borderColor = Color.white.opacity(0.1)
+    private let textPrimary = Color.white
+    private let textSecondary = Color.white.opacity(0.5)
+
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer()
+        ZStack {
+            bgColor.ignoresSafeArea()
 
-            Text("Build Your Knowledge Base")
-                .font(.title)
-                .fontWeight(.bold)
-
-            Text("Drop files to teach your twin what you know")
-                .foregroundStyle(.secondary)
-
-            // Drop zone
-            ZStack {
-                RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [8]))
-                    .foregroundColor(isTargeted ? .blue : .secondary.opacity(0.5))
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(isTargeted ? Color.blue.opacity(0.1) : Color.clear)
-                    )
-
-                VStack(spacing: 16) {
-                    Image(systemName: droppedFiles.isEmpty ? "doc.badge.plus" : "checkmark.circle.fill")
-                        .font(.system(size: 48))
-                        .foregroundColor(droppedFiles.isEmpty ? .secondary : .green)
-
-                    if droppedFiles.isEmpty {
-                        Text("Drop PDFs, text files, or meeting notes")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        Text("\(droppedFiles.count) file\(droppedFiles.count == 1 ? "" : "s") ready")
-                            .fontWeight(.medium)
-
-                        // File list
-                        VStack(alignment: .leading, spacing: 4) {
-                            ForEach(droppedFiles.prefix(5), id: \.self) { url in
-                                HStack {
-                                    Image(systemName: "doc.fill")
-                                        .foregroundColor(.blue)
-                                    Text(url.lastPathComponent)
-                                        .lineLimit(1)
-                                    Spacer()
-                                    Button(action: { droppedFiles.removeAll { $0 == url } }) {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .foregroundColor(.secondary)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                                .font(.caption)
-                            }
-                            if droppedFiles.count > 5 {
-                                Text("+ \(droppedFiles.count - 5) more")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .padding(.horizontal)
-                    }
-                }
-                .padding(40)
-            }
-            .frame(height: 250)
-            .padding(.horizontal, 40)
-            .onDrop(of: [.fileURL], isTargeted: $isTargeted) { providers in
-                handleDrop(providers: providers)
-                return true
-            }
-
-            // Or select files button
-            Button("Or Select Files...") {
-                selectFiles()
-            }
-            .buttonStyle(.link)
-
-            Spacer()
-
-            // Continue button
-            HStack {
+            VStack(spacing: 24) {
                 Spacer()
-                Button(action: onContinue) {
-                    Text(droppedFiles.isEmpty ? "Skip for Now" : "Continue")
-                        .frame(width: 120)
+
+                Text("Build Your Knowledge Base")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(textPrimary)
+
+                Text("Drop files to teach your twin what you know")
+                    .font(.system(size: 14))
+                    .foregroundColor(textSecondary)
+
+                // Drop zone
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [8]))
+                        .foregroundColor(isTargeted ? textPrimary : borderColor)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(isTargeted ? Color.white.opacity(0.05) : Color.clear)
+                        )
+
+                    VStack(spacing: 16) {
+                        Image(systemName: droppedFiles.isEmpty ? "doc.badge.plus" : "checkmark.circle.fill")
+                            .font(.system(size: 40))
+                            .foregroundColor(droppedFiles.isEmpty ? textSecondary : .green.opacity(0.8))
+
+                        if droppedFiles.isEmpty {
+                            Text("Drop PDFs, text files, or meeting notes")
+                                .font(.system(size: 14))
+                                .foregroundColor(textSecondary)
+                        } else {
+                            Text("\(droppedFiles.count) file\(droppedFiles.count == 1 ? "" : "s") ready")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(textPrimary)
+
+                            // File list
+                            VStack(alignment: .leading, spacing: 6) {
+                                ForEach(droppedFiles.prefix(5), id: \.self) { url in
+                                    HStack {
+                                        Image(systemName: "doc.fill")
+                                            .foregroundColor(textSecondary)
+                                        Text(url.lastPathComponent)
+                                            .foregroundColor(textPrimary.opacity(0.9))
+                                            .lineLimit(1)
+                                        Spacer()
+                                        Button(action: { droppedFiles.removeAll { $0 == url } }) {
+                                            Image(systemName: "xmark.circle.fill")
+                                                .foregroundColor(textSecondary)
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                    .font(.system(size: 12))
+                                }
+                                if droppedFiles.count > 5 {
+                                    Text("+ \(droppedFiles.count - 5) more")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(textSecondary)
+                                }
+                            }
+                            .padding(.horizontal)
+                        }
+                    }
+                    .padding(40)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .frame(height: 240)
+                .padding(.horizontal, 50)
+                .onDrop(of: [.fileURL], isTargeted: $isTargeted) { providers in
+                    handleDrop(providers: providers)
+                    return true
+                }
+
+                // Or select files button
+                Button("Or Select Files...") {
+                    selectFiles()
+                }
+                .font(.system(size: 13))
+                .foregroundColor(textSecondary)
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                // Continue button
+                HStack {
+                    Spacer()
+                    Button(action: onContinue) {
+                        Text(droppedFiles.isEmpty ? "Skip for Now" : "Continue")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(bgColor)
+                            .frame(width: 130)
+                            .padding(.vertical, 10)
+                            .background(textPrimary)
+                            .cornerRadius(8)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 50)
+                .padding(.bottom, 30)
             }
-            .padding(.horizontal, 40)
-            .padding(.bottom, 30)
         }
     }
 
@@ -297,84 +326,115 @@ struct IngestionStepView: View {
     }
 }
 
-// MARK: - Step 2: Insights
+// MARK: - Step 2: Insights (Granola Dark)
 
 struct InsightsStepView: View {
     let insights: [String]
     let isLoading: Bool
     let onContinue: () -> Void
 
+    // Granola colors
+    private let bgColor = Color(red: 0.11, green: 0.11, blue: 0.12)
+    private let surfaceColor = Color(red: 0.14, green: 0.14, blue: 0.15)
+    private let textPrimary = Color.white
+    private let textSecondary = Color.white.opacity(0.5)
+
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer()
+        ZStack {
+            bgColor.ignoresSafeArea()
 
-            if isLoading {
-                VStack(spacing: 16) {
-                    ProgressView()
-                        .scaleEffect(1.5)
-                    Text("Analyzing your knowledge...")
-                        .foregroundStyle(.secondary)
-                }
-            } else {
-                Text("Your Knowledge Profile")
-                    .font(.title)
-                    .fontWeight(.bold)
-
-                Text("Here's what we learned about your expertise")
-                    .foregroundStyle(.secondary)
-
-                // Insights list
-                VStack(alignment: .leading, spacing: 12) {
-                    ForEach(insights, id: \.self) { insight in
-                        HStack(alignment: .top, spacing: 12) {
-                            Image(systemName: "sparkle")
-                                .foregroundColor(.yellow)
-                            Text(insight)
-                        }
-                        .padding()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.secondary.opacity(0.1))
-                        .cornerRadius(8)
-                    }
-                }
-                .padding(.horizontal, 40)
-
-                if insights.isEmpty {
-                    VStack(spacing: 8) {
-                        Image(systemName: "doc.text.magnifyingglass")
-                            .font(.system(size: 48))
-                            .foregroundColor(.secondary)
-                        Text("Add documents to see insights")
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.vertical, 40)
-                }
-            }
-
-            Spacer()
-
-            // Continue button
-            HStack {
+            VStack(spacing: 24) {
                 Spacer()
-                Button(action: onContinue) {
-                    Text("Continue")
-                        .frame(width: 120)
+
+                if isLoading {
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                        Text("Analyzing your knowledge...")
+                            .font(.system(size: 14))
+                            .foregroundColor(textSecondary)
+                    }
+                } else {
+                    Text("Your Knowledge Profile")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(textPrimary)
+
+                    Text("Here's what we learned about your expertise")
+                        .font(.system(size: 14))
+                        .foregroundColor(textSecondary)
+
+                    // Insights list
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(insights, id: \.self) { insight in
+                            HStack(alignment: .top, spacing: 12) {
+                                Image(systemName: "sparkle")
+                                    .foregroundColor(.yellow.opacity(0.8))
+                                    .font(.system(size: 14))
+                                Text(insight)
+                                    .font(.system(size: 14))
+                                    .foregroundColor(textPrimary.opacity(0.9))
+                            }
+                            .padding(14)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(surfaceColor)
+                            .cornerRadius(8)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 50)
+
+                    if insights.isEmpty {
+                        VStack(spacing: 12) {
+                            Image(systemName: "doc.text.magnifyingglass")
+                                .font(.system(size: 40))
+                                .foregroundColor(textSecondary)
+                            Text("Add documents to see insights")
+                                .font(.system(size: 14))
+                                .foregroundColor(textSecondary)
+                        }
+                        .padding(.vertical, 40)
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(isLoading)
+
+                Spacer()
+
+                // Continue button
+                HStack {
+                    Spacer()
+                    Button(action: onContinue) {
+                        Text("Continue")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(bgColor)
+                            .frame(width: 130)
+                            .padding(.vertical, 10)
+                            .background(textPrimary)
+                            .cornerRadius(8)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isLoading)
+                    .opacity(isLoading ? 0.5 : 1)
+                }
+                .padding(.horizontal, 50)
+                .padding(.bottom, 30)
             }
-            .padding(.horizontal, 40)
-            .padding(.bottom, 30)
         }
     }
 }
 
-// MARK: - Step 3: Integrations
+// MARK: - Step 3: Integrations (Granola Dark)
 
 struct IntegrationsStepView: View {
     @Binding var selectedIntegrations: Set<String>
     let onComplete: () -> Void
+
+    // Granola colors
+    private let bgColor = Color(red: 0.11, green: 0.11, blue: 0.12)
+    private let surfaceColor = Color(red: 0.14, green: 0.14, blue: 0.15)
+    private let textPrimary = Color.white
+    private let textSecondary = Color.white.opacity(0.5)
 
     let integrations = [
         Integration(id: "telegram", name: "Telegram", icon: "paperplane.fill", description: "Ask questions via @AskKayaBot"),
@@ -383,65 +443,78 @@ struct IntegrationsStepView: View {
     ]
 
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer()
+        ZStack {
+            bgColor.ignoresSafeArea()
 
-            Text("Connect Your Twin")
-                .font(.title)
-                .fontWeight(.bold)
-
-            Text("Choose how you want to interact with your knowledge")
-                .foregroundStyle(.secondary)
-
-            // Integration options
-            VStack(spacing: 12) {
-                ForEach(integrations) { integration in
-                    IntegrationRow(
-                        integration: integration,
-                        isSelected: selectedIntegrations.contains(integration.id),
-                        onToggle: {
-                            if selectedIntegrations.contains(integration.id) {
-                                selectedIntegrations.remove(integration.id)
-                            } else {
-                                selectedIntegrations.insert(integration.id)
-                            }
-                        }
-                    )
-                }
-            }
-            .padding(.horizontal, 40)
-
-            // Telegram setup hint
-            if selectedIntegrations.contains("telegram") {
-                VStack(spacing: 8) {
-                    Text("To connect Telegram:")
-                        .font(.caption)
-                        .fontWeight(.medium)
-                    Text("1. Open @AskKayaBot in Telegram\n2. Send /link to connect your account")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .padding()
-                .background(Color.blue.opacity(0.1))
-                .cornerRadius(8)
-                .padding(.horizontal, 40)
-            }
-
-            Spacer()
-
-            // Complete button
-            HStack {
+            VStack(spacing: 24) {
                 Spacer()
-                Button(action: onComplete) {
-                    Text("Get Started")
-                        .frame(width: 120)
+
+                Text("Connect Your Twin")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(textPrimary)
+
+                Text("Choose how you want to interact with your knowledge")
+                    .font(.system(size: 14))
+                    .foregroundColor(textSecondary)
+
+                // Integration options
+                VStack(spacing: 10) {
+                    ForEach(integrations) { integration in
+                        GranolaIntegrationRow(
+                            integration: integration,
+                            isSelected: selectedIntegrations.contains(integration.id),
+                            onToggle: {
+                                if selectedIntegrations.contains(integration.id) {
+                                    selectedIntegrations.remove(integration.id)
+                                } else {
+                                    selectedIntegrations.insert(integration.id)
+                                }
+                            }
+                        )
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .padding(.horizontal, 50)
+
+                // Telegram setup hint
+                if selectedIntegrations.contains("telegram") {
+                    VStack(spacing: 8) {
+                        Text("To connect Telegram:")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(textPrimary)
+                        Text("1. Open @AskKayaBot in Telegram\n2. Send /link to connect your account")
+                            .font(.system(size: 12))
+                            .foregroundColor(textSecondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(14)
+                    .background(Color.white.opacity(0.05))
+                    .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    )
+                    .padding(.horizontal, 50)
+                }
+
+                Spacer()
+
+                // Complete button
+                HStack {
+                    Spacer()
+                    Button(action: onComplete) {
+                        Text("Get Started")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(bgColor)
+                            .frame(width: 130)
+                            .padding(.vertical, 10)
+                            .background(textPrimary)
+                            .cornerRadius(8)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 50)
+                .padding(.bottom, 30)
             }
-            .padding(.horizontal, 40)
-            .padding(.bottom, 30)
         }
     }
 }
@@ -453,42 +526,58 @@ struct Integration: Identifiable {
     let description: String
 }
 
+struct GranolaIntegrationRow: View {
+    let integration: Integration
+    let isSelected: Bool
+    let onToggle: () -> Void
+
+    private let surfaceColor = Color(red: 0.14, green: 0.14, blue: 0.15)
+    private let textPrimary = Color.white
+    private let textSecondary = Color.white.opacity(0.5)
+
+    var body: some View {
+        Button(action: onToggle) {
+            HStack(spacing: 14) {
+                Image(systemName: integration.icon)
+                    .font(.system(size: 18))
+                    .foregroundColor(isSelected ? textPrimary : textSecondary)
+                    .frame(width: 28)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(integration.name)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(textPrimary)
+                    Text(integration.description)
+                        .font(.system(size: 12))
+                        .foregroundColor(textSecondary)
+                }
+
+                Spacer()
+
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .foregroundColor(isSelected ? textPrimary : textSecondary)
+                    .font(.system(size: 20))
+            }
+            .padding(14)
+            .background(isSelected ? Color.white.opacity(0.08) : surfaceColor)
+            .cornerRadius(10)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(isSelected ? Color.white.opacity(0.2) : Color.white.opacity(0.05), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// Legacy wrapper
 struct IntegrationRow: View {
     let integration: Integration
     let isSelected: Bool
     let onToggle: () -> Void
 
     var body: some View {
-        Button(action: onToggle) {
-            HStack(spacing: 16) {
-                Image(systemName: integration.icon)
-                    .font(.title2)
-                    .foregroundColor(isSelected ? .blue : .secondary)
-                    .frame(width: 32)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(integration.name)
-                        .fontWeight(.medium)
-                    Text(integration.description)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(isSelected ? .blue : .secondary)
-                    .font(.title2)
-            }
-            .padding()
-            .background(isSelected ? Color.blue.opacity(0.1) : Color.secondary.opacity(0.05))
-            .cornerRadius(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2)
-            )
-        }
-        .buttonStyle(.plain)
+        GranolaIntegrationRow(integration: integration, isSelected: isSelected, onToggle: onToggle)
     }
 }
 

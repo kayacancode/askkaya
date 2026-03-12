@@ -25,19 +25,23 @@ struct ContentView: View {
     }
 }
 
-// MARK: - Main View (Granola-style)
+// MARK: - Main View (Granola-style Dark)
 
 struct MainView: View {
     @EnvironmentObject var appState: AppState
     @State private var showSidebar = true
 
+    // Granola colors
+    private let bgColor = Color(red: 0.11, green: 0.11, blue: 0.12)
+    private let sidebarColor = Color(red: 0.09, green: 0.09, blue: 0.10)
+
     var body: some View {
         HStack(spacing: 0) {
-            // Minimal sidebar
+            // Dark sidebar
             if showSidebar {
                 TwinSidebar()
                     .frame(width: 220)
-                    .background(Color(NSColor.windowBackgroundColor))
+                    .background(sidebarColor)
             }
 
             // Main content
@@ -47,10 +51,12 @@ struct MainView: View {
                 EmptyStateView()
             }
         }
+        .background(bgColor)
         .toolbar {
             ToolbarItem(placement: .navigation) {
-                Button(action: { withAnimation { showSidebar.toggle() } }) {
+                Button(action: { withAnimation(.easeOut(duration: 0.2)) { showSidebar.toggle() } }) {
                     Image(systemName: "sidebar.left")
+                        .foregroundColor(.white.opacity(0.7))
                 }
             }
         }
@@ -58,52 +64,61 @@ struct MainView: View {
 }
 
 struct EmptyStateView: View {
+    private let bgColor = Color(red: 0.11, green: 0.11, blue: 0.12)
+
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 16) {
             Image(systemName: "bubble.left.and.bubble.right")
-                .font(.system(size: 56, weight: .light))
-                .foregroundColor(.secondary.opacity(0.5))
+                .font(.system(size: 48, weight: .light))
+                .foregroundColor(.white.opacity(0.2))
 
             Text("Select a twin to start")
-                .font(.title3)
-                .foregroundColor(.secondary)
+                .font(.system(size: 15))
+                .foregroundColor(.white.opacity(0.4))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(NSColor.textBackgroundColor))
+        .background(bgColor)
     }
 }
 
-// MARK: - Sidebar (Minimal)
+// MARK: - Sidebar (Granola Dark)
 
 struct TwinSidebar: View {
     @EnvironmentObject var appState: AppState
+
+    private let textPrimary = Color.white
+    private let textSecondary = Color.white.opacity(0.5)
+    private let borderColor = Color.white.opacity(0.08)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Header
             HStack {
                 Text("Twins")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(textSecondary)
+                    .textCase(.uppercase)
+                    .tracking(0.5)
                 Spacer()
                 Button(action: {}) {
                     Image(systemName: "plus")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(textSecondary)
                 }
                 .buttonStyle(.plain)
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.vertical, 14)
 
-            Divider()
-                .opacity(0.5)
+            Rectangle()
+                .fill(borderColor)
+                .frame(height: 1)
 
             // Twin list
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 2) {
                     ForEach(appState.twins) { twin in
-                        TwinRow(twin: twin, isSelected: appState.selectedTwin?.id == twin.id)
+                        GranolaTwinRow(twin: twin, isSelected: appState.selectedTwin?.id == twin.id)
                             .onTapGesture {
                                 withAnimation(.easeOut(duration: 0.15)) {
                                     appState.selectedTwin = twin
@@ -117,25 +132,34 @@ struct TwinSidebar: View {
             Spacer()
 
             // User section
-            Divider()
-                .opacity(0.5)
+            Rectangle()
+                .fill(borderColor)
+                .frame(height: 1)
 
             HStack(spacing: 10) {
                 Circle()
-                    .fill(Color.blue.opacity(0.2))
+                    .fill(Color.white.opacity(0.1))
                     .frame(width: 28, height: 28)
                     .overlay(
                         Text(String(appState.currentUser?.email.prefix(1).uppercased() ?? "?"))
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.blue)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(textPrimary)
                     )
 
                 Text(appState.currentUser?.email ?? "")
                     .font(.system(size: 12))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(textSecondary)
                     .lineLimit(1)
 
                 Spacer()
+
+                // Logout
+                Button(action: { Task { await appState.logout() } }) {
+                    Image(systemName: "rectangle.portrait.and.arrow.right")
+                        .font(.system(size: 12))
+                        .foregroundColor(textSecondary)
+                }
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
@@ -143,32 +167,45 @@ struct TwinSidebar: View {
     }
 }
 
-struct TwinRow: View {
+struct GranolaTwinRow: View {
     let twin: Twin
     let isSelected: Bool
+
+    private let textPrimary = Color.white
+    private let textSecondary = Color.white.opacity(0.5)
 
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: twin.icon)
-                .font(.system(size: 14))
-                .foregroundColor(isSelected ? .blue : .secondary)
-                .frame(width: 20)
+                .font(.system(size: 13))
+                .foregroundColor(isSelected ? textPrimary : textSecondary)
+                .frame(width: 18)
 
             Text(twin.name)
                 .font(.system(size: 13))
-                .foregroundColor(isSelected ? .primary : .primary.opacity(0.8))
+                .foregroundColor(isSelected ? textPrimary : textPrimary.opacity(0.8))
 
             Spacer()
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 14)
         .padding(.vertical, 8)
-        .background(isSelected ? Color.blue.opacity(0.1) : Color.clear)
+        .background(isSelected ? Color.white.opacity(0.08) : Color.clear)
         .cornerRadius(6)
         .padding(.horizontal, 8)
     }
 }
 
-// MARK: - Chat View (Granola-style)
+// Legacy wrapper
+struct TwinRow: View {
+    let twin: Twin
+    let isSelected: Bool
+
+    var body: some View {
+        GranolaTwinRow(twin: twin, isSelected: isSelected)
+    }
+}
+
+// MARK: - Chat View (Granola-style Dark)
 
 struct ChatView: View {
     let twin: Twin
@@ -178,80 +215,108 @@ struct ChatView: View {
     @EnvironmentObject var appState: AppState
     @FocusState private var isInputFocused: Bool
 
+    // Granola colors
+    private let bgColor = Color(red: 0.11, green: 0.11, blue: 0.12)
+    private let surfaceColor = Color(red: 0.14, green: 0.14, blue: 0.15)
+    private let borderColor = Color.white.opacity(0.08)
+    private let textPrimary = Color.white
+    private let textSecondary = Color.white.opacity(0.6)
+
     var body: some View {
         ZStack {
-            // Background
-            Color(NSColor.textBackgroundColor)
-                .ignoresSafeArea()
+            // Dark background
+            bgColor.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Granola-style header
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Ask \(twin.name)")
-                        .font(.system(size: 28, weight: .bold))
-
-                    HStack(spacing: 12) {
-                        Text(twin.type.capitalized)
-                            .font(.system(size: 13))
-                            .foregroundColor(.secondary)
-
-                        if !twin.expertiseAreas.isEmpty {
-                            HStack(spacing: 4) {
-                                Circle()
-                                    .fill(Color.secondary.opacity(0.3))
-                                    .frame(width: 3, height: 3)
-                                Text(twin.expertiseAreas.prefix(2).joined(separator: ", "))
-                                    .font(.system(size: 13))
-                                    .foregroundColor(.secondary)
-                            }
-                        }
+                // Header with twin selector
+                HStack {
+                    // Twin dropdown style
+                    HStack(spacing: 6) {
+                        Text("Ask \(twin.name)")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(textPrimary)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(textSecondary)
                     }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(surfaceColor)
+                    .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(borderColor, lineWidth: 1)
+                    )
+
+                    Spacer()
+
+                    // New chat button
+                    Button(action: { messages.removeAll() }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "square.and.pencil")
+                                .font(.system(size: 12))
+                            Text("New chat")
+                                .font(.system(size: 13))
+                        }
+                        .foregroundColor(textSecondary)
+                    }
+                    .buttonStyle(.plain)
+
+                    // Settings
+                    Button(action: {}) {
+                        Image(systemName: "slider.horizontal.3")
+                            .font(.system(size: 14))
+                            .foregroundColor(textSecondary)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.leading, 12)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 40)
-                .padding(.top, 30)
-                .padding(.bottom, 20)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .background(surfaceColor)
+                .overlay(
+                    Rectangle()
+                        .frame(height: 1)
+                        .foregroundColor(borderColor),
+                    alignment: .bottom
+                )
 
                 // Messages area
                 ScrollViewReader { proxy in
                     ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 24) {
+                        LazyVStack(alignment: .leading, spacing: 20) {
                             ForEach(messages) { message in
-                                MessageView(message: message)
+                                GranolaMessageView(message: message, textPrimary: textPrimary, textSecondary: textSecondary, surfaceColor: surfaceColor)
                                     .id(message.id)
                             }
 
                             if isLoading {
-                                LoadingIndicator()
+                                GranolaLoadingIndicator()
                             }
                         }
-                        .padding(.horizontal, 40)
-                        .padding(.vertical, 20)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 16)
                     }
                     .onChange(of: messages.count) { _ in
                         if let lastMessage = messages.last {
-                            withAnimation {
+                            withAnimation(.easeOut(duration: 0.2)) {
                                 proxy.scrollTo(lastMessage.id, anchor: .bottom)
                             }
                         }
                     }
                 }
 
-                Spacer(minLength: 80)
-            }
-
-            // Floating input bar (Granola-style)
-            VStack {
-                Spacer()
-                FloatingInputBar(
+                // Input bar at bottom
+                GranolaInputBar(
                     text: $inputText,
                     isLoading: isLoading,
                     isFocused: _isInputFocused,
-                    placeholder: "Ask something...",
+                    surfaceColor: surfaceColor,
+                    borderColor: borderColor,
+                    textPrimary: textPrimary,
+                    textSecondary: textSecondary,
                     onSubmit: { Task { await sendMessage() } }
                 )
-                .padding(.horizontal, 40)
-                .padding(.bottom, 20)
             }
         }
     }
@@ -293,75 +358,109 @@ struct ChatView: View {
     }
 }
 
-// MARK: - Message View (Clean)
+// MARK: - Granola Message View
 
+struct GranolaMessageView: View {
+    let message: ChatMessage
+    let textPrimary: Color
+    let textSecondary: Color
+    let surfaceColor: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if message.role == .user {
+                // User message - right aligned bubble
+                HStack {
+                    Spacer(minLength: 60)
+                    Text(message.content)
+                        .font(.system(size: 14))
+                        .foregroundColor(textPrimary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(surfaceColor.opacity(1.5))
+                        .cornerRadius(16)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                        )
+                }
+            } else {
+                // Assistant response - full width
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(message.content)
+                        .font(.system(size: 14))
+                        .foregroundColor(textPrimary.opacity(0.95))
+                        .textSelection(.enabled)
+                        .lineSpacing(5)
+
+                    // Metadata indicators
+                    if let confidence = message.confidence, confidence < 0.7 {
+                        HStack(spacing: 4) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 10))
+                            Text("Low confidence")
+                                .font(.system(size: 11))
+                        }
+                        .foregroundColor(.orange.opacity(0.8))
+                    }
+
+                    if message.escalated {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.up.circle.fill")
+                                .font(.system(size: 10))
+                            Text("Sent for review")
+                                .font(.system(size: 11))
+                        }
+                        .foregroundColor(.orange.opacity(0.8))
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: message.role == .user ? .trailing : .leading)
+    }
+}
+
+// Legacy wrapper for compatibility
 struct MessageView: View {
     let message: ChatMessage
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Role label
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(message.role == .user ? Color.blue : Color.green)
-                    .frame(width: 6, height: 6)
-
-                Text(message.role == .user ? "You" : "Twin")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.secondary)
-
-                Text(message.timestamp.formatted(date: .omitted, time: .shortened))
-                    .font(.system(size: 11))
-                    .foregroundColor(.secondary.opacity(0.7))
-            }
-
-            // Content
-            Text(message.content)
-                .font(.system(size: 15))
-                .textSelection(.enabled)
-                .lineSpacing(4)
-
-            // Metadata (if any)
-            if let confidence = message.confidence, confidence < 0.7 {
-                HStack(spacing: 4) {
-                    Image(systemName: "exclamationmark.circle")
-                        .font(.system(size: 11))
-                    Text("Low confidence")
-                        .font(.system(size: 11))
-                }
-                .foregroundColor(.orange)
-                .padding(.top, 4)
-            }
-
-            if message.escalated {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.up.message")
-                        .font(.system(size: 11))
-                    Text("Sent for review")
-                        .font(.system(size: 11))
-                }
-                .foregroundColor(.orange)
-                .padding(.top, 4)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        GranolaMessageView(
+            message: message,
+            textPrimary: .white,
+            textSecondary: .white.opacity(0.6),
+            surfaceColor: Color(red: 0.14, green: 0.14, blue: 0.15)
+        )
     }
 }
 
-// MARK: - Floating Input Bar (Granola-style)
+// MARK: - Granola Input Bar
 
-struct FloatingInputBar: View {
+struct GranolaInputBar: View {
     @Binding var text: String
     let isLoading: Bool
     @FocusState var isFocused: Bool
-    let placeholder: String
+    let surfaceColor: Color
+    let borderColor: Color
+    let textPrimary: Color
+    let textSecondary: Color
     let onSubmit: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
-            TextField(placeholder, text: $text, axis: .vertical)
+            // Attachment button
+            Button(action: {}) {
+                Image(systemName: "paperclip")
+                    .font(.system(size: 14))
+                    .foregroundColor(textSecondary)
+            }
+            .buttonStyle(.plain)
+
+            // Text field
+            TextField("Type / for recipes", text: $text, axis: .vertical)
                 .textFieldStyle(.plain)
                 .font(.system(size: 14))
+                .foregroundColor(textPrimary)
                 .lineLimit(1...4)
                 .focused($isFocused)
                 .onSubmit {
@@ -370,53 +469,94 @@ struct FloatingInputBar: View {
                     }
                 }
 
-            // Action buttons (Granola-style)
-            HStack(spacing: 8) {
+            // Right side buttons
+            HStack(spacing: 10) {
                 if isLoading {
                     ProgressView()
-                        .scaleEffect(0.7)
-                        .frame(width: 24, height: 24)
+                        .scaleEffect(0.6)
+                        .frame(width: 20, height: 20)
                 } else {
-                    Button(action: onSubmit) {
-                        Image(systemName: "arrow.up")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(text.isEmpty ? .secondary : .white)
-                            .frame(width: 24, height: 24)
-                            .background(text.isEmpty ? Color.secondary.opacity(0.2) : Color.blue)
-                            .cornerRadius(6)
+                    // Settings
+                    Button(action: {}) {
+                        Image(systemName: "slider.horizontal.3")
+                            .font(.system(size: 13))
+                            .foregroundColor(textSecondary)
                     }
                     .buttonStyle(.plain)
-                    .disabled(text.isEmpty)
+
+                    // Mic
+                    Button(action: {}) {
+                        Image(systemName: "mic")
+                            .font(.system(size: 13))
+                            .foregroundColor(textSecondary)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(NSColor.controlBackgroundColor))
-                .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
-        )
+        .padding(.vertical, 14)
+        .background(surfaceColor)
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
+            Rectangle()
+                .frame(height: 1)
+                .foregroundColor(borderColor),
+            alignment: .top
         )
     }
 }
 
-// MARK: - Loading Indicator
+// Legacy wrapper
+struct FloatingInputBar: View {
+    @Binding var text: String
+    let isLoading: Bool
+    @FocusState var isFocused: Bool
+    let placeholder: String
+    let onSubmit: () -> Void
 
-struct LoadingIndicator: View {
     var body: some View {
-        HStack(spacing: 8) {
+        GranolaInputBar(
+            text: $text,
+            isLoading: isLoading,
+            isFocused: _isFocused,
+            surfaceColor: Color(red: 0.14, green: 0.14, blue: 0.15),
+            borderColor: Color.white.opacity(0.08),
+            textPrimary: .white,
+            textSecondary: .white.opacity(0.6),
+            onSubmit: onSubmit
+        )
+    }
+}
+
+// MARK: - Granola Loading Indicator
+
+struct GranolaLoadingIndicator: View {
+    @State private var animating = false
+
+    var body: some View {
+        HStack(spacing: 4) {
             ForEach(0..<3) { index in
                 Circle()
-                    .fill(Color.green)
+                    .fill(Color.white.opacity(0.4))
                     .frame(width: 6, height: 6)
-                    .opacity(0.6)
+                    .scaleEffect(animating ? 1.0 : 0.5)
+                    .animation(
+                        .easeInOut(duration: 0.5)
+                            .repeatForever()
+                            .delay(Double(index) * 0.15),
+                        value: animating
+                    )
             }
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, 8)
+        .onAppear { animating = true }
+    }
+}
+
+// Legacy wrapper
+struct LoadingIndicator: View {
+    var body: some View {
+        GranolaLoadingIndicator()
     }
 }
 
