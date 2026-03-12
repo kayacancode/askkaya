@@ -1,6 +1,37 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
+/// Content visibility levels
+enum ContentVisibility: String, CaseIterable {
+    case `private` = "private"
+    case team = "team"
+    case organization = "organization"
+
+    var displayName: String {
+        switch self {
+        case .private: return "Private"
+        case .team: return "Team"
+        case .organization: return "Organization"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .private: return "Only you can query"
+        case .team: return "Your team can query"
+        case .organization: return "Anyone in org can query"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .private: return "lock.fill"
+        case .team: return "person.2.fill"
+        case .organization: return "building.2.fill"
+        }
+    }
+}
+
 /// 3-step onboarding wizard for new users (Granola Light Style)
 struct OnboardingWizardView: View {
     @EnvironmentObject var appState: AppState
@@ -9,6 +40,7 @@ struct OnboardingWizardView: View {
     @State private var isProcessing = false
     @State private var extractedInsights: [String] = []
     @State private var selectedIntegrations: Set<String> = []
+    @State private var contentVisibility: ContentVisibility = .private
 
     let onComplete: () -> Void
 
@@ -33,6 +65,7 @@ struct OnboardingWizardView: View {
                     IngestionStepView(
                         droppedFiles: $droppedFiles,
                         isProcessing: $isProcessing,
+                        visibility: $contentVisibility,
                         onContinue: { processFiles() }
                     )
                     .tag(0)
@@ -82,9 +115,10 @@ struct OnboardingWizardView: View {
                 isProcessing = false
             }
 
-            // Also ingest the files
+            // Also ingest the files with selected visibility
             if let tenantId = await MainActor.run(body: { appState.currentTenantId }) {
-                await ingestFiles(tenantId: tenantId)
+                let visibility = await MainActor.run { contentVisibility }
+                await ingestFiles(tenantId: tenantId, visibility: visibility)
             }
         }
     }
@@ -135,7 +169,7 @@ struct OnboardingWizardView: View {
         return insights
     }
 
-    private func ingestFiles(tenantId: String) async {
+    private func ingestFiles(tenantId: String, visibility: ContentVisibility) async {
         do {
             let token = try await AuthService.shared.getValidToken()
 
@@ -151,12 +185,14 @@ struct OnboardingWizardView: View {
                         "content": doc.content,
                         "title": doc.title,
                         "source": "file",
-                        "client_id": tenantId
+                        "client_id": tenantId,
+                        "visibility": visibility.rawValue  // private, team, or organization
                     ]
                     let body: [String: Any] = ["items": [item]]
                     request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
                     let _ = try await URLSession.shared.data(for: request)
+                    NSLog("[Onboarding] Ingested \(doc.title) with visibility: \(visibility.rawValue)")
                 }
             }
         } catch {
@@ -176,6 +212,7 @@ struct OnboardingWizardView: View {
 struct IngestionStepView: View {
     @Binding var droppedFiles: [URL]
     @Binding var isProcessing: Bool
+    @Binding var visibility: ContentVisibility
     let onContinue: () -> Void
 
     @State private var isTargeted = false
@@ -194,6 +231,24 @@ struct IngestionStepView: View {
                 Text("Drop files to teach your twin what you know")
                     .font(.system(size: 14))
                     .foregroundColor(GranolaTheme.textSecondary)
+
+                // Visibility selector
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Who can query this content?")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(GranolaTheme.textSecondary)
+
+                    HStack(spacing: 8) {
+                        ForEach(ContentVisibility.allCases, id: \.self) { option in
+                            VisibilityOptionButton(
+                                option: option,
+                                isSelected: visibility == option,
+                                onSelect: { visibility = option }
+                            )
+                        }
+                    }
+                }
+                .padding(.horizontal, 50)
 
                 // Drop zone
                 ZStack {
@@ -537,6 +592,43 @@ struct GranolaIntegrationRow: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
                     .stroke(isSelected ? GranolaTheme.textSecondary.opacity(0.3) : GranolaTheme.creamBorder, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Visibility Option Button
+
+struct VisibilityOptionButton: View {
+    let option: ContentVisibility
+    let isSelected: Bool
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            VStack(spacing: 6) {
+                Image(systemName: option.icon)
+                    .font(.system(size: 16))
+                    .foregroundColor(isSelected ? GranolaTheme.textPrimary : GranolaTheme.textSecondary)
+
+                Text(option.displayName)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(isSelected ? GranolaTheme.textPrimary : GranolaTheme.textSecondary)
+
+                Text(option.description)
+                    .font(.system(size: 10))
+                    .foregroundColor(GranolaTheme.textSecondary.opacity(0.8))
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 8)
+            .background(isSelected ? GranolaTheme.cream : GranolaTheme.creamDark)
+            .cornerRadius(8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isSelected ? GranolaTheme.textPrimary.opacity(0.3) : GranolaTheme.creamBorder, lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
