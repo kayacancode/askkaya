@@ -123,7 +123,7 @@ class FolderWatcher {
                     )
                 }
 
-                print("Successfully ingested: \(filename), sourceId: \(response.sourceId ?? "unknown")")
+                print("Successfully ingested: \(filename), created: \(response.created)")
             } catch {
                 await moveToFailed(fileURL: fileURL)
 

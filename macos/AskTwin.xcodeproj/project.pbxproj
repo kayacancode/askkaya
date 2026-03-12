@@ -1,0 +1,485 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0103703075AB989131FA812A /* DocumentPreviewWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 981CB69D7B6D85406FDDCDCB /* DocumentPreviewWindow.swift */; };
+		017B5A931A90719B2AFDFF83 /* AskTwinApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 540029238C72F76B85D8818D /* AskTwinApp.swift */; };
+		13ED71372D5669FD564183AD /* DocumentPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BD7D56216338E88CFF5EE3D /* DocumentPreviewView.swift */; };
+		1DD38F6AE31B45158648F5C0 /* StatusItemDropView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5E220C79411A94CFE8FD4B2 /* StatusItemDropView.swift */; };
+		35A45A4275021A7CFE08127D /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22B0AB95D3B0B4886C9AFFB3 /* APIClient.swift */; };
+		399261E785348272399A251A /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA4E4848B1D96539EBA5883 /* PreferencesView.swift */; };
+		542AA8A805D4E83C4AF767EE /* QuickAskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E282AA9AE9B4762B2C1F7925 /* QuickAskView.swift */; };
+		557D9C7D6726574AA06C003C /* OnboardingWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 101A3C39C94373C013D7EDC3 /* OnboardingWizardView.swift */; };
+		5E6C756F2B8C1C2CDBB5CC81 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF1E302885AA12D90D376C52 /* LoginView.swift */; };
+		747EF6AB30A743D24A22B909 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF41C84A753E8981F03E4E6D /* ChatView.swift */; };
+		B4833619E3754AE1D359BACA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7E3E0BD76685D5B28E22F629 /* Assets.xcassets */; };
+		BCA4E44D43F5B35150BADB73 /* FolderWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C41F9C7298FEB01CD7EEE4F /* FolderWatcher.swift */; };
+		C52439D0FF6E1FDC9FBBBB88 /* GranolaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BD87D5E76D988429936D8DC /* GranolaService.swift */; };
+		DA7DC9250A7086C8C1DEAFCC /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 086612D00D927C51E7C3F831 /* AuthService.swift */; };
+		DAE59AE6EF92209C5CB80C73 /* CLIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 296CB1E04E43D4CEDE157FED /* CLIService.swift */; };
+		E154FB9B2EF5B2A015C91C98 /* DropZoneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DD4E2B372EA0AFEF4ACFD6D /* DropZoneView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		086612D00D927C51E7C3F831 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
+		101A3C39C94373C013D7EDC3 /* OnboardingWizardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingWizardView.swift; sourceTree = "<group>"; };
+		1BD87D5E76D988429936D8DC /* GranolaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GranolaService.swift; sourceTree = "<group>"; };
+		22B0AB95D3B0B4886C9AFFB3 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		296CB1E04E43D4CEDE157FED /* CLIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLIService.swift; sourceTree = "<group>"; };
+		4BB0E59D2587CE645F3AA419 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		540029238C72F76B85D8818D /* AskTwinApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AskTwinApp.swift; sourceTree = "<group>"; };
+		5C41F9C7298FEB01CD7EEE4F /* FolderWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderWatcher.swift; sourceTree = "<group>"; };
+		61BC32E102EC0EE78BE6143E /* AskTwin.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AskTwin.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6FA4E4848B1D96539EBA5883 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
+		7DD4E2B372EA0AFEF4ACFD6D /* DropZoneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DropZoneView.swift; sourceTree = "<group>"; };
+		7E3E0BD76685D5B28E22F629 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		8BD7D56216338E88CFF5EE3D /* DocumentPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentPreviewView.swift; sourceTree = "<group>"; };
+		981CB69D7B6D85406FDDCDCB /* DocumentPreviewWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentPreviewWindow.swift; sourceTree = "<group>"; };
+		B1138CB9797B1771E634E6D0 /* AskTwin.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AskTwin.entitlements; sourceTree = "<group>"; };
+		DF41C84A753E8981F03E4E6D /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		E282AA9AE9B4762B2C1F7925 /* QuickAskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickAskView.swift; sourceTree = "<group>"; };
+		E5E220C79411A94CFE8FD4B2 /* StatusItemDropView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusItemDropView.swift; sourceTree = "<group>"; };
+		EF1E302885AA12D90D376C52 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		2C29555E91AFD92EBC3A6535 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				EF1E302885AA12D90D376C52 /* LoginView.swift */,
+				101A3C39C94373C013D7EDC3 /* OnboardingWizardView.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		42F9E9E63E8CF7FDF3A4E491 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				B1138CB9797B1771E634E6D0 /* AskTwin.entitlements */,
+				7E3E0BD76685D5B28E22F629 /* Assets.xcassets */,
+				4BB0E59D2587CE645F3AA419 /* Info.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		4317E744896E45F5A00BAEDD /* Ingestion */ = {
+			isa = PBXGroup;
+			children = (
+				8BD7D56216338E88CFF5EE3D /* DocumentPreviewView.swift */,
+				981CB69D7B6D85406FDDCDCB /* DocumentPreviewWindow.swift */,
+			);
+			path = Ingestion;
+			sourceTree = "<group>";
+		};
+		51DA5D3C4D3EFF1B88E7816F /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				61BC32E102EC0EE78BE6143E /* AskTwin.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		5C4FAF14BAE3EB7199EA6CAD = {
+			isa = PBXGroup;
+			children = (
+				E4A49764629C0D78BF18FB44 /* AskTwin */,
+				51DA5D3C4D3EFF1B88E7816F /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		6907457CCA919D96F06B4F9D /* App */ = {
+			isa = PBXGroup;
+			children = (
+				540029238C72F76B85D8818D /* AskTwinApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		6C6A60099EB0254EBBED9B6C /* Chat */ = {
+			isa = PBXGroup;
+			children = (
+				DF41C84A753E8981F03E4E6D /* ChatView.swift */,
+			);
+			path = Chat;
+			sourceTree = "<group>";
+		};
+		71E4505E904DE91E54087842 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		76E9620F817C7BA873059B94 /* MenuBar */ = {
+			isa = PBXGroup;
+			children = (
+				7DD4E2B372EA0AFEF4ACFD6D /* DropZoneView.swift */,
+				E282AA9AE9B4762B2C1F7925 /* QuickAskView.swift */,
+				E5E220C79411A94CFE8FD4B2 /* StatusItemDropView.swift */,
+			);
+			path = MenuBar;
+			sourceTree = "<group>";
+		};
+		7FAD2A83E54206A4ACF6471D /* Models */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		B36053F8C6A1ADDCBC9D42F4 /* Preferences */ = {
+			isa = PBXGroup;
+			children = (
+				6FA4E4848B1D96539EBA5883 /* PreferencesView.swift */,
+			);
+			path = Preferences;
+			sourceTree = "<group>";
+		};
+		E4A49764629C0D78BF18FB44 /* AskTwin */ = {
+			isa = PBXGroup;
+			children = (
+				6907457CCA919D96F06B4F9D /* App */,
+				7FAD2A83E54206A4ACF6471D /* Models */,
+				42F9E9E63E8CF7FDF3A4E491 /* Resources */,
+				EF8F0DF0A092C1637C067786 /* Services */,
+				71E4505E904DE91E54087842 /* Utilities */,
+				EF7AC6579BACEE3428C07F6B /* Views */,
+			);
+			path = AskTwin;
+			sourceTree = "<group>";
+		};
+		EF7AC6579BACEE3428C07F6B /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				6C6A60099EB0254EBBED9B6C /* Chat */,
+				FF2DD4E26C76B136D8152FED /* Components */,
+				4317E744896E45F5A00BAEDD /* Ingestion */,
+				76E9620F817C7BA873059B94 /* MenuBar */,
+				2C29555E91AFD92EBC3A6535 /* Onboarding */,
+				B36053F8C6A1ADDCBC9D42F4 /* Preferences */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		EF8F0DF0A092C1637C067786 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				22B0AB95D3B0B4886C9AFFB3 /* APIClient.swift */,
+				086612D00D927C51E7C3F831 /* AuthService.swift */,
+				296CB1E04E43D4CEDE157FED /* CLIService.swift */,
+				5C41F9C7298FEB01CD7EEE4F /* FolderWatcher.swift */,
+				1BD87D5E76D988429936D8DC /* GranolaService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		FF2DD4E26C76B136D8152FED /* Components */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		9162D1E3E07D11810632CD03 /* AskTwin */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 01F659ACE69292AB21E6F6D6 /* Build configuration list for PBXNativeTarget "AskTwin" */;
+			buildPhases = (
+				AD17D2866C2DA5F6C5A03550 /* Sources */,
+				9CADB44D95D6EB6471D74EB3 /* Copy CLI Binary */,
+				73EDD618DDE6F4F7F0F5DDB2 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AskTwin;
+			packageProductDependencies = (
+			);
+			productName = AskTwin;
+			productReference = 61BC32E102EC0EE78BE6143E /* AskTwin.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		02ADD5988A0DD5DC05BC0CE7 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					9162D1E3E07D11810632CD03 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = CA55DCF3B6DBC1937940EDDE /* Build configuration list for PBXProject "AskTwin" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 5C4FAF14BAE3EB7199EA6CAD;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				9162D1E3E07D11810632CD03 /* AskTwin */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		73EDD618DDE6F4F7F0F5DDB2 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B4833619E3754AE1D359BACA /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		9CADB44D95D6EB6471D74EB3 /* Copy CLI Binary */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Copy CLI Binary";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "cp \"${SRCROOT}/AskTwin/Resources/askkaya\" \"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Resources/askkaya\"\nchmod +x \"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Resources/askkaya\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		AD17D2866C2DA5F6C5A03550 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				35A45A4275021A7CFE08127D /* APIClient.swift in Sources */,
+				017B5A931A90719B2AFDFF83 /* AskTwinApp.swift in Sources */,
+				DA7DC9250A7086C8C1DEAFCC /* AuthService.swift in Sources */,
+				DAE59AE6EF92209C5CB80C73 /* CLIService.swift in Sources */,
+				747EF6AB30A743D24A22B909 /* ChatView.swift in Sources */,
+				13ED71372D5669FD564183AD /* DocumentPreviewView.swift in Sources */,
+				0103703075AB989131FA812A /* DocumentPreviewWindow.swift in Sources */,
+				E154FB9B2EF5B2A015C91C98 /* DropZoneView.swift in Sources */,
+				BCA4E44D43F5B35150BADB73 /* FolderWatcher.swift in Sources */,
+				C52439D0FF6E1FDC9FBBBB88 /* GranolaService.swift in Sources */,
+				5E6C756F2B8C1C2CDBB5CC81 /* LoginView.swift in Sources */,
+				557D9C7D6726574AA06C003C /* OnboardingWizardView.swift in Sources */,
+				399261E785348272399A251A /* PreferencesView.swift in Sources */,
+				542AA8A805D4E83C4AF767EE /* QuickAskView.swift in Sources */,
+				1DD38F6AE31B45158648F5C0 /* StatusItemDropView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		295F475E92C8B21FF42F61B9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = AskTwin;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		7C12C624F598B8A3BEA02B7C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = AskTwin;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+		A537213173EC5ADCE8865D6E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = AskTwin/Resources/AskTwin.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = AskTwin/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.askkaya.AskTwin;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		BB05D253E4309E9E695917D5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = AskTwin/Resources/AskTwin.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = AskTwin/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.askkaya.AskTwin;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		01F659ACE69292AB21E6F6D6 /* Build configuration list for PBXNativeTarget "AskTwin" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A537213173EC5ADCE8865D6E /* Debug */,
+				BB05D253E4309E9E695917D5 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		CA55DCF3B6DBC1937940EDDE /* Build configuration list for PBXProject "AskTwin" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				295F475E92C8B21FF42F61B9 /* Debug */,
+				7C12C624F598B8A3BEA02B7C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 02ADD5988A0DD5DC05BC0CE7 /* Project object */;
+}

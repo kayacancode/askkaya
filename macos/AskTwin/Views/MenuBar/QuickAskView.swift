@@ -27,7 +27,7 @@ struct QuickAskView: View {
                     } label: {
                         HStack(spacing: 6) {
                             Image(systemName: twin.icon)
-                                .foregroundStyle(.blue)
+                                .foregroundColor(.blue)
                             Text("Ask \(twin.name)")
                                 .fontWeight(.medium)
                             Image(systemName: "chevron.down")
@@ -104,7 +104,7 @@ struct QuickAskView: View {
                         .font(.title2)
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(question.isEmpty ? .secondary : .blue)
+                .foregroundColor(question.isEmpty ? .secondary : .blue)
                 .disabled(question.isEmpty || isLoading)
             }
             .padding()
@@ -191,6 +191,78 @@ struct ResponseView: View {
             }
         }
         .padding()
+    }
+}
+
+// MARK: - Compact Menu Bar View
+
+struct MenuBarQuickAskView: View {
+    @StateObject private var appState = AppState.shared
+    @State private var question = ""
+    @State private var isLoading = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Last response snippet (if any)
+            if let twin = appState.selectedTwin {
+                Text("Ask \(twin.name)...")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            // Compact input
+            HStack(spacing: 8) {
+                TextField("Quick question...", text: $question)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.system(size: 12))
+                    .onSubmit(ask)
+
+                if isLoading {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                } else {
+                    Button(action: ask) {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .foregroundColor(question.isEmpty ? .secondary : .blue)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(question.isEmpty)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .frame(width: 280)
+    }
+
+    private func ask() {
+        guard !question.isEmpty,
+              let twin = appState.selectedTwin else {
+            return
+        }
+
+        let q = question
+        question = ""
+        isLoading = true
+
+        Task {
+            do {
+                // Use bundled CLI
+                _ = try await CLIService.shared.ask(
+                    question: q,
+                    target: twin.slug
+                )
+                await MainActor.run {
+                    isLoading = false
+                    // Open main window to show response
+                    NSApp.activate(ignoringOtherApps: true)
+                }
+            } catch {
+                await MainActor.run {
+                    isLoading = false
+                }
+            }
+        }
     }
 }
 

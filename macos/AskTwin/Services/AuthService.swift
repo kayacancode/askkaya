@@ -10,7 +10,11 @@ actor AuthService {
     private var refreshToken: String?
 
     private init() {
-        loadFromKeychain()
+        // Load from keychain synchronously during init
+        let stored = Self.loadFromKeychainSync()
+        self.cachedToken = stored.token
+        self.refreshToken = stored.refresh
+        self.tokenExpiry = stored.expiry
     }
 
     // MARK: - Public API
@@ -30,10 +34,56 @@ actor AuthService {
 
         saveToKeychain()
 
+        // Also login the bundled CLI so it can make queries
+        Task {
+            await loginCLI(email: email, password: password)
+        }
+
         return User(uid: response.userId, email: response.email, displayName: nil)
     }
 
-    func logout() async {
+    func signup(email: String, password: String) async throws -> User {
+        let response = try await APIClient.shared.signup(email: email, password: password)
+
+        cachedToken = response.idToken
+        refreshToken = response.refreshToken
+        tokenExpiry = Date().addingTimeInterval(TimeInterval(response.expiresIn - 60))
+
+        saveToKeychain()
+
+        // Also login the bundled CLI
+        Task {
+            await loginCLI(email: email, password: password)
+        }
+
+        return User(uid: response.userId, email: response.email, displayName: nil)
+    }
+
+    /// Login the bundled CLI with the same credentials
+    private func loginCLI(email: String, password: String) async {
+        guard let binaryPath = Bundle.main.path(forResource: "askkaya", ofType: nil) else {
+            return
+        }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: binaryPath)
+        process.arguments = ["auth", "login", "-e", email, "-p", password]
+
+        // Set HOME so CLI can access keychain
+        var env = ProcessInfo.processInfo.environment
+        env["HOME"] = FileManager.default.homeDirectoryForCurrentUser.path
+        process.environment = env
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+            NSLog("[AuthService] CLI login completed with exit code: \(process.terminationStatus)")
+        } catch {
+            NSLog("[AuthService] CLI login failed: \(error)")
+        }
+    }
+
+    func logout() {
         cachedToken = nil
         refreshToken = nil
         tokenExpiry = nil
@@ -64,14 +114,17 @@ actor AuthService {
 
     // MARK: - Keychain
 
-    private func loadFromKeychain() {
-        cachedToken = KeychainService.load(key: "idToken")
-        refreshToken = KeychainService.load(key: "refreshToken")
+    private static func loadFromKeychainSync() -> (token: String?, refresh: String?, expiry: Date?) {
+        let token = KeychainService.load(key: "idToken")
+        let refresh = KeychainService.load(key: "refreshToken")
 
+        var expiry: Date? = nil
         if let expiryString = KeychainService.load(key: "tokenExpiry"),
            let expiryInterval = TimeInterval(expiryString) {
-            tokenExpiry = Date(timeIntervalSince1970: expiryInterval)
+            expiry = Date(timeIntervalSince1970: expiryInterval)
         }
+
+        return (token, refresh, expiry)
     }
 
     private func saveToKeychain() {
