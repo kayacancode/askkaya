@@ -311,6 +311,7 @@ struct ChatView: View {
                     text: $inputText,
                     isLoading: isLoading,
                     isFocused: _isInputFocused,
+                    twinName: twin.name,
                     surfaceColor: surfaceColor,
                     borderColor: borderColor,
                     textPrimary: textPrimary,
@@ -440,6 +441,7 @@ struct GranolaInputBar: View {
     @Binding var text: String
     let isLoading: Bool
     @FocusState var isFocused: Bool
+    let twinName: String
     let surfaceColor: Color
     let borderColor: Color
     let textPrimary: Color
@@ -457,7 +459,7 @@ struct GranolaInputBar: View {
             .buttonStyle(.plain)
 
             // Text field
-            TextField("Type / for recipes", text: $text, axis: .vertical)
+            TextField("Ask \(twinName)'s twin...", text: $text, axis: .vertical)
                 .textFieldStyle(.plain)
                 .font(.system(size: 14))
                 .foregroundColor(textPrimary)
@@ -519,6 +521,7 @@ struct FloatingInputBar: View {
             text: $text,
             isLoading: isLoading,
             isFocused: _isFocused,
+            twinName: "Kaya",
             surfaceColor: Color(red: 0.14, green: 0.14, blue: 0.15),
             borderColor: Color.white.opacity(0.08),
             textPrimary: .white,
