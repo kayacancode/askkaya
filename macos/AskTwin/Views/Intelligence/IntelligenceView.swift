@@ -123,85 +123,168 @@ struct IntelligenceView: View {
     private func extractIntelligence() async {
         await MainActor.run { isLoading = true }
 
-        do {
-            let token = try await AuthService.shared.getValidToken()
-            guard let tenantId = await MainActor.run(body: { appState.currentTenantId }) else {
-                await MainActor.run { isLoading = false }
-                return
-            }
+        // Extract directly from Granola cache
+        let extracted = await extractFromGranolaCache()
 
-            // Call the ask API to extract intelligence
-            let prompt = """
-            Analyze my knowledge base and extract:
-            1. KEY PEOPLE: Names, roles, companies, and relationship context
-            2. ACTION ITEMS: Tasks, commitments, follow-ups with owners and dates
-            3. PATTERNS: Recurring themes, decision patterns, strategic tensions
-            4. CONCEPTS: Mental models, frameworks, and reusable insights
-
-            Format as JSON with keys: people, actionItems, patterns, concepts
-            """
-
-            var request = URLRequest(url: URL(string: "https://us-central1-askkaya-47cef.cloudfunctions.net/askApi")!)
-            request.httpMethod = "POST"
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            request.setValue(tenantId, forHTTPHeaderField: "X-Tenant-ID")
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-            let body: [String: Any] = ["question": prompt]
-            request.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-            let (data, _) = try await URLSession.shared.data(for: request)
-
-            // Parse the response
-            if let response = try? JSONDecoder().decode(AskApiResponse.self, from: data) {
-                let extracted = parseIntelligenceFromResponse(response.answer)
-                await MainActor.run {
-                    intelligenceData = extracted
-                    isLoading = false
-                }
-            } else {
-                // Generate sample data for demo
-                await MainActor.run {
-                    intelligenceData = generateSampleIntelligence()
-                    isLoading = false
-                }
-            }
-        } catch {
-            NSLog("[Intelligence] Error extracting: \(error)")
-            await MainActor.run {
-                intelligenceData = generateSampleIntelligence()
-                isLoading = false
-            }
+        await MainActor.run {
+            intelligenceData = extracted
+            isLoading = false
         }
     }
 
-    private func parseIntelligenceFromResponse(_ answer: String) -> IntelligenceData {
-        // Try to parse JSON from response, fallback to sample
-        if let jsonStart = answer.firstIndex(of: "{"),
-           let jsonEnd = answer.lastIndex(of: "}") {
-            let jsonString = String(answer[jsonStart...jsonEnd])
-            if let data = jsonString.data(using: .utf8),
-               let parsed = try? JSONDecoder().decode(IntelligenceData.self, from: data) {
-                return parsed
-            }
-        }
-        return generateSampleIntelligence()
-    }
+    private func extractFromGranolaCache() async -> IntelligenceData {
+        let cacheURL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Granola/cache-v4.json")
 
-    private func generateSampleIntelligence() -> IntelligenceData {
-        IntelligenceData(
-            people: [
-                PersonIntel(name: "From your meetings", role: "Extract intelligence to see people", company: "", context: "Click the Extract button above", meetingCount: 0, lastContact: nil),
-            ],
-            actionItems: [
-                ActionItem(task: "Extract intelligence from your knowledge base", owner: "You", dueDate: "Today", status: .pending, source: "AskKaya"),
-            ],
-            patterns: [
-                PatternIntel(name: "Add content to see patterns", description: "Your patterns will appear here after extraction", frequency: 0, examples: []),
-            ],
-            concepts: [
-                ConceptIntel(name: "Your Concepts", description: "Mental models and frameworks from your knowledge will appear here", source: "AskKaya", relatedPeople: []),
+        guard let data = try? Data(contentsOf: cacheURL),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let documents = json["documents"] as? [[String: Any]] else {
+            NSLog("[Intelligence] Could not read Granola cache")
+            return generateEmptyIntelligence()
+        }
+
+        var peopleDict: [String: PersonIntel] = [:]
+        var actionItems: [ActionItem] = []
+        var topicCounts: [String: Int] = [:]
+        var allConcepts: [String] = []
+
+        for doc in documents {
+            let title = doc["title"] as? String ?? "Untitled"
+            let transcript = doc["transcript"] as? String ?? ""
+            let notes = doc["notes"] as? String ?? ""
+            let content = transcript + " " + notes
+
+            // Extract participants
+            if let participants = doc["participants"] as? [[String: Any]] {
+                for participant in participants {
+                    let name = participant["name"] as? String ?? ""
+                    let email = participant["email"] as? String
+                    let company = email?.components(separatedBy: "@").last?.replacingOccurrences(of: ".com", with: "").capitalized ?? ""
+
+                    if !name.isEmpty && name != "Unknown" {
+                        if var existing = peopleDict[name] {
+                            existing = PersonIntel(
+                                name: existing.name,
+                                role: existing.role,
+                                company: existing.company.isEmpty ? company : existing.company,
+                                context: existing.context,
+                                meetingCount: existing.meetingCount + 1,
+                                lastContact: title
+                            )
+                            peopleDict[name] = existing
+                        } else {
+                            peopleDict[name] = PersonIntel(
+                                name: name,
+                                role: "",
+                                company: company,
+                                context: "Met in: \(title)",
+                                meetingCount: 1,
+                                lastContact: title
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Extract action items from content
+            let actionPatterns = [
+                "need to", "should", "will", "action:", "todo:", "follow up",
+                "let's", "we'll", "i'll", "going to", "make sure", "don't forget"
             ]
+            let sentences = content.components(separatedBy: CharacterSet(charactersIn: ".!?\n"))
+            for sentence in sentences {
+                let lower = sentence.lowercased()
+                for pattern in actionPatterns {
+                    if lower.contains(pattern) && sentence.count > 20 && sentence.count < 200 {
+                        let cleaned = sentence.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if !cleaned.isEmpty && !actionItems.contains(where: { $0.task == cleaned }) {
+                            actionItems.append(ActionItem(
+                                task: cleaned,
+                                owner: "",
+                                dueDate: "",
+                                status: .pending,
+                                source: title
+                            ))
+                        }
+                        break
+                    }
+                }
+            }
+
+            // Extract topics/patterns
+            let words = content.lowercased()
+                .components(separatedBy: CharacterSet.alphanumerics.inverted)
+                .filter { $0.count > 5 }
+
+            for word in words {
+                topicCounts[word, default: 0] += 1
+            }
+
+            // Extract concepts (look for framework-like phrases)
+            let conceptPatterns = ["framework", "model", "approach", "strategy", "principle", "system", "process", "method"]
+            for pattern in conceptPatterns {
+                if content.lowercased().contains(pattern) {
+                    // Find the sentence containing this concept
+                    for sentence in sentences {
+                        if sentence.lowercased().contains(pattern) && sentence.count > 30 {
+                            let cleaned = sentence.trimmingCharacters(in: .whitespacesAndNewlines)
+                            if !allConcepts.contains(cleaned) {
+                                allConcepts.append(cleaned)
+                            }
+                            break
+                        }
+                    }
+                }
+            }
+        }
+
+        // Build people array sorted by meeting count
+        let people = peopleDict.values
+            .sorted { $0.meetingCount > $1.meetingCount }
+            .prefix(20)
+            .map { $0 }
+
+        // Build patterns from top topics
+        let topTopics = topicCounts
+            .sorted { $0.value > $1.value }
+            .prefix(10)
+
+        var patterns: [PatternIntel] = []
+        for (topic, count) in topTopics {
+            if count > 3 {
+                patterns.append(PatternIntel(
+                    name: topic.capitalized,
+                    description: "Mentioned \(count) times across your meetings",
+                    frequency: count,
+                    examples: []
+                ))
+            }
+        }
+
+        // Build concepts
+        let concepts = allConcepts.prefix(10).map { concept in
+            ConceptIntel(
+                name: String(concept.prefix(50)) + (concept.count > 50 ? "..." : ""),
+                description: concept,
+                source: "Extracted from meetings",
+                relatedPeople: []
+            )
+        }
+
+        return IntelligenceData(
+            people: Array(people),
+            actionItems: Array(actionItems.prefix(20)),
+            patterns: patterns.isEmpty ? [PatternIntel(name: "No patterns yet", description: "Add more content to see patterns", frequency: 0, examples: [])] : patterns,
+            concepts: concepts.isEmpty ? [ConceptIntel(name: "No concepts yet", description: "Concepts will be extracted from your discussions", source: "", relatedPeople: [])] : Array(concepts)
+        )
+    }
+
+    private func generateEmptyIntelligence() -> IntelligenceData {
+        IntelligenceData(
+            people: [PersonIntel(name: "No Granola data found", role: "", company: "", context: "Sync Granola meetings first", meetingCount: 0, lastContact: nil)],
+            actionItems: [ActionItem(task: "Sync your Granola meetings", owner: "You", dueDate: "Today", status: .pending, source: "AskKaya")],
+            patterns: [PatternIntel(name: "No patterns yet", description: "Sync meetings to see patterns", frequency: 0, examples: [])],
+            concepts: [ConceptIntel(name: "No concepts yet", description: "Sync meetings to extract concepts", source: "", relatedPeople: [])]
         )
     }
 }
