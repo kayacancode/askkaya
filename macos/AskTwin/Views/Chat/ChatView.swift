@@ -27,9 +27,15 @@ struct ContentView: View {
 
 // MARK: - Main View (Granola-style Dark)
 
+enum MainViewTab {
+    case chat
+    case knowledge
+}
+
 struct MainView: View {
     @EnvironmentObject var appState: AppState
     @State private var showSidebar = true
+    @State private var selectedTab: MainViewTab = .chat
 
     // Granola colors
     private let bgColor = Color(red: 0.11, green: 0.11, blue: 0.12)
@@ -39,16 +45,21 @@ struct MainView: View {
         HStack(spacing: 0) {
             // Dark sidebar
             if showSidebar {
-                TwinSidebar()
+                TwinSidebar(selectedTab: $selectedTab)
                     .frame(width: 220)
                     .background(sidebarColor)
             }
 
             // Main content
-            if let twin = appState.selectedTwin {
-                ChatView(twin: twin)
-            } else {
-                EmptyStateView()
+            switch selectedTab {
+            case .chat:
+                if let twin = appState.selectedTwin {
+                    ChatView(twin: twin)
+                } else {
+                    EmptyStateView()
+                }
+            case .knowledge:
+                KnowledgeBaseView()
             }
         }
         .background(bgColor)
@@ -85,6 +96,7 @@ struct EmptyStateView: View {
 
 struct TwinSidebar: View {
     @EnvironmentObject var appState: AppState
+    @Binding var selectedTab: MainViewTab
 
     private let textPrimary = Color.white
     private let textSecondary = Color.white.opacity(0.5)
@@ -118,9 +130,10 @@ struct TwinSidebar: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 2) {
                     ForEach(appState.twins) { twin in
-                        GranolaTwinRow(twin: twin, isSelected: appState.selectedTwin?.id == twin.id)
+                        GranolaTwinRow(twin: twin, isSelected: selectedTab == .chat && appState.selectedTwin?.id == twin.id)
                             .onTapGesture {
                                 withAnimation(.easeOut(duration: 0.15)) {
+                                    selectedTab = .chat
                                     appState.selectedTwin = twin
                                 }
                             }
@@ -130,6 +143,33 @@ struct TwinSidebar: View {
             }
 
             Spacer()
+
+            // Knowledge Base button
+            Rectangle()
+                .fill(borderColor)
+                .frame(height: 1)
+
+            Button(action: { withAnimation(.easeOut(duration: 0.15)) { selectedTab = .knowledge } }) {
+                HStack(spacing: 10) {
+                    Image(systemName: "brain.head.profile")
+                        .font(.system(size: 14))
+                        .foregroundColor(selectedTab == .knowledge ? textPrimary : textSecondary)
+                        .frame(width: 18)
+
+                    Text("Knowledge Base")
+                        .font(.system(size: 13))
+                        .foregroundColor(selectedTab == .knowledge ? textPrimary : textPrimary.opacity(0.8))
+
+                    Spacer()
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(selectedTab == .knowledge ? Color.white.opacity(0.08) : Color.clear)
+                .cornerRadius(6)
+                .padding(.horizontal, 8)
+            }
+            .buttonStyle(.plain)
+            .padding(.vertical, 8)
 
             // User section
             Rectangle()
