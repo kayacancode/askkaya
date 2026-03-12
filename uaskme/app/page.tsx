@@ -186,7 +186,7 @@ export default function Home() {
                   flexShrink: 0
                 }}>2</span>
                 <h3 style={{ fontSize: '24px', fontWeight: 600, color: '#1A2E1A', lineHeight: 1.3 }}>
-                  Someone asks, YOU respond
+                  Someone asks, your twin responds
                 </h3>
               </div>
 
@@ -390,26 +390,23 @@ export default function Home() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', maxWidth: '1000px', margin: '0 auto' }}>
             {[
               {
-                name: 'Sarah',
+                name: 'Sophie',
                 role: 'Head of Sales',
-                avatar: 'SC',
-                color: '#EC4899',
+                image: '/team/sophie.jpeg',
                 queries: '847 questions answered this month',
                 example: '"What\'s our enterprise pricing?"'
               },
               {
-                name: 'Marcus',
+                name: 'Yiliu',
                 role: 'Support Lead',
-                avatar: 'MR',
-                color: '#8B5CF6',
+                image: '/team/yiliu.jpeg',
                 queries: '1.2k questions answered this month',
                 example: '"How do I reset my password?"'
               },
               {
                 name: 'Jordan',
                 role: 'Product Manager',
-                avatar: 'JT',
-                color: '#06B6D4',
+                image: '/team/jordan.jpeg',
                 queries: '523 questions answered this month',
                 example: '"When is v2.0 launching?"'
               }
@@ -428,21 +425,36 @@ export default function Home() {
                   textAlign: 'center'
                 }}
               >
-                <div style={{
-                  width: '64px',
-                  height: '64px',
-                  borderRadius: '50%',
-                  background: member.color,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                  fontWeight: 600,
-                  fontSize: '20px',
-                  margin: '0 auto 16px'
-                }}>
-                  {member.avatar}
-                </div>
+                {member.image ? (
+                  <img
+                    src={member.image}
+                    alt={member.name}
+                    style={{
+                      width: '64px',
+                      height: '64px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      margin: '0 auto 16px',
+                      display: 'block'
+                    }}
+                  />
+                ) : (
+                  <div style={{
+                    width: '64px',
+                    height: '64px',
+                    borderRadius: '50%',
+                    background: member.color,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontWeight: 600,
+                    fontSize: '20px',
+                    margin: '0 auto 16px'
+                  }}>
+                    {member.avatar}
+                  </div>
+                )}
                 <p style={{ fontWeight: 600, color: '#1A2E1A', fontSize: '18px' }}>Ask{member.name}</p>
                 <p style={{ fontSize: '14px', color: '#8A9A8A', marginBottom: '16px' }}>{member.role}</p>
                 <div style={{
