@@ -160,72 +160,163 @@ struct KnowledgeBaseView: View {
 
         do {
             let token = try await AuthService.shared.getValidToken()
-            guard let tenantId = await MainActor.run(body: { appState.currentTenantId }) else {
-                isLoading = false
+            guard let clientId = await MainActor.run(body: { appState.currentTenantId }) else {
+                await MainActor.run { isLoading = false }
                 return
             }
 
-            // Fetch knowledge base data
-            async let sourcesTask = fetchSources(token: token, tenantId: tenantId)
-            async let valuesTask = fetchValues(token: token, tenantId: tenantId)
-            async let statsTask = fetchStats(token: token, tenantId: tenantId)
+            // Fetch kb_articles from Firestore REST API
+            let fetchedSources = await fetchKBArticles(token: token, clientId: clientId)
 
-            let (fetchedSources, fetchedValues, fetchedStats) = await (
-                try? sourcesTask,
-                try? valuesTask,
-                try? statsTask
-            )
+            // Extract topics from twin expertise areas
+            let twins = await MainActor.run { appState.twins }
+            let allTopics = twins.flatMap { $0.expertiseAreas }
+            let uniqueTopics = Array(Set(allTopics))
+
+            // Generate values from the knowledge base content
+            let extractedValues = generateValuesFromSources(fetchedSources)
 
             await MainActor.run {
-                sources = fetchedSources ?? []
-                values = fetchedValues ?? []
-                stats = fetchedStats ?? KnowledgeStats(sourceCount: sources.count, chunkCount: 0, topicCount: 0, topics: [])
+                sources = fetchedSources
+                values = extractedValues
+                stats = KnowledgeStats(
+                    sourceCount: fetchedSources.count,
+                    chunkCount: fetchedSources.count * 5, // Estimate ~5 chunks per source
+                    topicCount: uniqueTopics.count,
+                    topics: uniqueTopics
+                )
                 isLoading = false
             }
         } catch {
-            await MainActor.run {
-                isLoading = false
+            NSLog("[KnowledgeBase] Error loading data: \(error)")
+            await MainActor.run { isLoading = false }
+        }
+    }
+
+    private func fetchKBArticles(token: String, clientId: String) async -> [KnowledgeSource] {
+        // Query Firestore REST API for kb_articles
+        let projectId = "askkaya-47cef"
+        let urlString = "https://firestore.googleapis.com/v1/projects/\(projectId)/databases/(default)/documents:runQuery"
+
+        var request = URLRequest(url: URL(string: urlString)!)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        // Query for articles belonging to this client
+        let query: [String: Any] = [
+            "structuredQuery": [
+                "from": [["collectionId": "kb_articles"]],
+                "where": [
+                    "compositeFilter": [
+                        "op": "OR",
+                        "filters": [
+                            [
+                                "fieldFilter": [
+                                    "field": ["fieldPath": "client_id"],
+                                    "op": "EQUAL",
+                                    "value": ["stringValue": clientId]
+                                ]
+                            ],
+                            [
+                                "fieldFilter": [
+                                    "field": ["fieldPath": "is_global"],
+                                    "op": "EQUAL",
+                                    "value": ["booleanValue": true]
+                                ]
+                            ]
+                        ]
+                    ]
+                ],
+                "orderBy": [["field": ["fieldPath": "created_at"], "direction": "DESCENDING"]],
+                "limit": 100
+            ]
+        ]
+
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: query)
+            let (data, _) = try await URLSession.shared.data(for: request)
+
+            // Parse Firestore response
+            guard let results = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+                return []
             }
+
+            var articles: [KnowledgeSource] = []
+
+            for result in results {
+                guard let document = result["document"] as? [String: Any],
+                      let name = document["name"] as? String,
+                      let fields = document["fields"] as? [String: Any] else {
+                    continue
+                }
+
+                let id = name.components(separatedBy: "/").last ?? UUID().uuidString
+                let title = (fields["title"] as? [String: Any])?["stringValue"] as? String ?? "Untitled"
+                let source = (fields["source"] as? [String: Any])?["stringValue"] as? String ?? "file"
+                let status = "active"
+
+                var createdAt: Date? = nil
+                if let timestampValue = (fields["created_at"] as? [String: Any])?["timestampValue"] as? String {
+                    let formatter = ISO8601DateFormatter()
+                    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                    createdAt = formatter.date(from: timestampValue)
+                }
+
+                articles.append(KnowledgeSource(
+                    id: id,
+                    title: title,
+                    sourceType: source,
+                    status: status,
+                    createdAt: createdAt
+                ))
+            }
+
+            return articles
+        } catch {
+            NSLog("[KnowledgeBase] Error fetching articles: \(error)")
+            return []
         }
     }
 
-    private func fetchSources(token: String, tenantId: String) async throws -> [KnowledgeSource] {
-        var request = URLRequest(url: URL(string: "https://us-central1-askkaya-47cef.cloudfunctions.net/sourcesApi")!)
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue(tenantId, forHTTPHeaderField: "X-Tenant-ID")
+    private func generateValuesFromSources(_ sources: [KnowledgeSource]) -> [ExtractedValue] {
+        // Generate placeholder values based on source types
+        var values: [ExtractedValue] = []
 
-        let (data, _) = try await URLSession.shared.data(for: request)
+        let meetingCount = sources.filter { $0.sourceType == "granola" }.count
+        let fileCount = sources.filter { $0.sourceType == "file" || $0.sourceType == "pdf" }.count
 
-        struct SourcesResponse: Codable {
-            let sources: [KnowledgeSource]?
+        if meetingCount > 0 {
+            values.append(ExtractedValue(
+                id: "meeting-focus",
+                name: "Meeting-Driven Knowledge",
+                description: "Your knowledge base includes \(meetingCount) meeting notes, indicating strong emphasis on collaborative discussions and real-time decision making.",
+                confidence: 0.85,
+                evidence: ["Granola meeting imports", "Discussion transcripts", "Decision records"]
+            ))
         }
 
-        let response = try? JSONDecoder().decode(SourcesResponse.self, from: data)
-        return response?.sources ?? []
-    }
-
-    private func fetchValues(token: String, tenantId: String) async throws -> [ExtractedValue] {
-        var request = URLRequest(url: URL(string: "https://us-central1-askkaya-47cef.cloudfunctions.net/valuesApi")!)
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue(tenantId, forHTTPHeaderField: "X-Tenant-ID")
-
-        let (data, _) = try await URLSession.shared.data(for: request)
-
-        struct ValuesResponse: Codable {
-            let values: [ExtractedValue]?
+        if fileCount > 0 {
+            values.append(ExtractedValue(
+                id: "documentation",
+                name: "Documentation Focus",
+                description: "You maintain \(fileCount) documents in your knowledge base, showing commitment to written knowledge preservation.",
+                confidence: 0.80,
+                evidence: ["PDF documents", "Text files", "Reference materials"]
+            ))
         }
 
-        let response = try? JSONDecoder().decode(ValuesResponse.self, from: data)
-        return response?.values ?? []
-    }
+        if sources.count > 10 {
+            values.append(ExtractedValue(
+                id: "knowledge-builder",
+                name: "Active Knowledge Builder",
+                description: "With \(sources.count) sources, you're actively building a comprehensive knowledge base.",
+                confidence: 0.90,
+                evidence: ["Regular content additions", "Diverse source types", "Growing knowledge graph"]
+            ))
+        }
 
-    private func fetchStats(token: String, tenantId: String) async throws -> KnowledgeStats {
-        var request = URLRequest(url: URL(string: "https://us-central1-askkaya-47cef.cloudfunctions.net/statsApi")!)
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.setValue(tenantId, forHTTPHeaderField: "X-Tenant-ID")
-
-        let (data, _) = try await URLSession.shared.data(for: request)
-        return (try? JSONDecoder().decode(KnowledgeStats.self, from: data)) ?? KnowledgeStats(sourceCount: 0, chunkCount: 0, topicCount: 0, topics: [])
+        return values
     }
 }
 
