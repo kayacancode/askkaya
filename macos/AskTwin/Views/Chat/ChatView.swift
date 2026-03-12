@@ -30,6 +30,7 @@ struct ContentView: View {
 enum MainViewTab {
     case chat
     case knowledge
+    case intelligence
 }
 
 struct MainView: View {
@@ -60,6 +61,8 @@ struct MainView: View {
                 }
             case .knowledge:
                 KnowledgeBaseView()
+            case .intelligence:
+                IntelligenceView()
             }
         }
         .background(bgColor)
@@ -144,31 +147,56 @@ struct TwinSidebar: View {
 
             Spacer()
 
-            // Knowledge Base button
+            // Bottom navigation
             Rectangle()
                 .fill(borderColor)
                 .frame(height: 1)
 
-            Button(action: { withAnimation(.easeOut(duration: 0.15)) { selectedTab = .knowledge } }) {
-                HStack(spacing: 10) {
-                    Image(systemName: "brain.head.profile")
-                        .font(.system(size: 14))
-                        .foregroundColor(selectedTab == .knowledge ? textPrimary : textSecondary)
-                        .frame(width: 18)
+            VStack(spacing: 4) {
+                // Intelligence button
+                Button(action: { withAnimation(.easeOut(duration: 0.15)) { selectedTab = .intelligence } }) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 14))
+                            .foregroundColor(selectedTab == .intelligence ? .yellow : textSecondary)
+                            .frame(width: 18)
 
-                    Text("Knowledge Base")
-                        .font(.system(size: 13))
-                        .foregroundColor(selectedTab == .knowledge ? textPrimary : textPrimary.opacity(0.8))
+                        Text("Intelligence")
+                            .font(.system(size: 13))
+                            .foregroundColor(selectedTab == .intelligence ? textPrimary : textPrimary.opacity(0.8))
 
-                    Spacer()
+                        Spacer()
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(selectedTab == .intelligence ? Color.white.opacity(0.08) : Color.clear)
+                    .cornerRadius(6)
+                    .padding(.horizontal, 8)
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(selectedTab == .knowledge ? Color.white.opacity(0.08) : Color.clear)
-                .cornerRadius(6)
-                .padding(.horizontal, 8)
+                .buttonStyle(.plain)
+
+                // Knowledge Base button
+                Button(action: { withAnimation(.easeOut(duration: 0.15)) { selectedTab = .knowledge } }) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "brain.head.profile")
+                            .font(.system(size: 14))
+                            .foregroundColor(selectedTab == .knowledge ? textPrimary : textSecondary)
+                            .frame(width: 18)
+
+                        Text("Knowledge Base")
+                            .font(.system(size: 13))
+                            .foregroundColor(selectedTab == .knowledge ? textPrimary : textPrimary.opacity(0.8))
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(selectedTab == .knowledge ? Color.white.opacity(0.08) : Color.clear)
+                    .cornerRadius(6)
+                    .padding(.horizontal, 8)
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
             .padding(.vertical, 8)
 
             // User section
