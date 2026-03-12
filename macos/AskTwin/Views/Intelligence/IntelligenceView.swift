@@ -133,8 +133,16 @@ struct IntelligenceView: View {
     }
 
     private func extractFromGranolaCache() async -> IntelligenceData {
-        let cacheURL = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/Granola/cache-v4.json")
+        let baseURL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Granola")
+
+        // Try different cache versions (v6 is current, fallback to v4)
+        var cacheURL = baseURL.appendingPathComponent("cache-v6.json")
+        if !FileManager.default.fileExists(atPath: cacheURL.path) {
+            cacheURL = baseURL.appendingPathComponent("cache-v4.json")
+        }
+
+        NSLog("[Intelligence] Reading from: \(cacheURL.path)")
 
         guard let data = try? Data(contentsOf: cacheURL),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],

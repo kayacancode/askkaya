@@ -4,10 +4,16 @@ import Foundation
 actor GranolaService {
     static let shared = GranolaService()
 
-    private let cacheURL: URL = {
-        FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/Granola/cache-v4.json")
-    }()
+    private var cacheURL: URL {
+        let baseURL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/Granola")
+        // Try v6 first (current), then fallback to v4
+        let v6 = baseURL.appendingPathComponent("cache-v6.json")
+        if FileManager.default.fileExists(atPath: v6.path) {
+            return v6
+        }
+        return baseURL.appendingPathComponent("cache-v4.json")
+    }
 
     private init() {}
 
