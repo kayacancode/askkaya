@@ -40,6 +40,7 @@ enum MainViewTab {
     case chat
     case knowledge
     case intelligence
+    case graph
 }
 
 struct MainView: View {
@@ -68,6 +69,8 @@ struct MainView: View {
                 KnowledgeBaseView()
             case .intelligence:
                 IntelligenceView()
+            case .graph:
+                KnowledgeGraphView()
             }
         }
         .background(GranolaTheme.cream)
@@ -195,6 +198,28 @@ struct TwinSidebar: View {
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
                     .background(selectedTab == .knowledge ? GranolaTheme.cream : Color.clear)
+                    .cornerRadius(6)
+                    .padding(.horizontal, 8)
+                }
+                .buttonStyle(.plain)
+
+                // Knowledge Graph button
+                Button(action: { withAnimation(.easeOut(duration: 0.15)) { selectedTab = .graph } }) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "point.3.connected.trianglepath.dotted")
+                            .font(.system(size: 14))
+                            .foregroundColor(selectedTab == .graph ? .purple : textSecondary)
+                            .frame(width: 18)
+
+                        Text("Knowledge Graph")
+                            .font(.system(size: 13))
+                            .foregroundColor(selectedTab == .graph ? textPrimary : textPrimary.opacity(0.7))
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(selectedTab == .graph ? GranolaTheme.cream : Color.clear)
                     .cornerRadius(6)
                     .padding(.horizontal, 8)
                 }
@@ -503,18 +528,25 @@ struct GranolaInputBar: View {
             }
             .buttonStyle(.plain)
 
-            // Text field
-            TextField("Ask \(twinName)'s twin...", text: $text, axis: .vertical)
-                .textFieldStyle(.plain)
-                .font(.system(size: 14))
-                .foregroundColor(GranolaTheme.textPrimary)
-                .lineLimit(1...4)
-                .focused($isFocused)
-                .onSubmit {
-                    if !text.isEmpty && !isLoading {
-                        onSubmit()
-                    }
+            // Text field with custom dark placeholder
+            ZStack(alignment: .leading) {
+                if text.isEmpty {
+                    Text("Ask \(twinName)'s twin...")
+                        .font(.system(size: 14))
+                        .foregroundColor(GranolaTheme.textPrimary.opacity(0.5))
                 }
+                TextField("", text: $text, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 14))
+                    .foregroundColor(GranolaTheme.textPrimary)
+                    .lineLimit(1...4)
+                    .focused($isFocused)
+                    .onSubmit {
+                        if !text.isEmpty && !isLoading {
+                            onSubmit()
+                        }
+                    }
+            }
 
             // Right side buttons
             HStack(spacing: 10) {

@@ -1,0 +1,141 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #FDFDFB;
+  --accent: #22C55E;
+  --accent-light: #DCFCE7;
+  --text-dark: #1A2E1A;
+  --text-body: #4A5A4A;
+  --text-muted: #8A9A8A;
+  --border: #E8EBE8;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Outfit', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text-dark);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--accent-light);
+  color: var(--text-dark);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* Floating pill nav like Granola */
+.nav-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 32px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 10px 12px 10px 28px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+/* Green button */
+.btn-green {
+  background: var(--accent);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 15px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-green:hover {
+  background: #1DB954;
+}
+
+/* Large CTA button - Granola style */
+.btn-cta {
+  background: #4ADE80;
+  color: #166534;
+  padding: 18px 40px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 18px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  transition: background 0.2s ease;
+}
+
+.btn-cta:hover {
+  background: #22C55E;
+}
+
+/* Keyword highlight pill */
+.highlight {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent-light);
+  color: var(--accent);
+  padding: 4px 14px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+/* macOS window */
+.mac-window {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.mac-titlebar {
+  display: flex;
+  gap: 8px;
+  padding: 14px 16px;
+  background: #FAFAFA;
+  border-bottom: 1px solid var(--border);
+}
+
+.mac-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.mac-dot-red { background: #FF5F57; }
+.mac-dot-yellow { background: #FFBD2E; }
+.mac-dot-green { background: #28CA41; }
+
+.mac-content {
+  padding: 24px;
+}
+
+/* Card */
+.card {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+  padding: 48px;
+}

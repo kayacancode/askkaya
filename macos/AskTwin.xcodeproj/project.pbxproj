@@ -9,10 +9,12 @@
 /* Begin PBXBuildFile section */
 		0103703075AB989131FA812A /* DocumentPreviewWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 981CB69D7B6D85406FDDCDCB /* DocumentPreviewWindow.swift */; };
 		017B5A931A90719B2AFDFF83 /* AskTwinApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 540029238C72F76B85D8818D /* AskTwinApp.swift */; };
+		0E1B0BCB56ACFEC3DECFFD49 /* KnowledgeBaseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C398462751CD2D2B5CC17038 /* KnowledgeBaseView.swift */; };
 		13ED71372D5669FD564183AD /* DocumentPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BD7D56216338E88CFF5EE3D /* DocumentPreviewView.swift */; };
 		1DD38F6AE31B45158648F5C0 /* StatusItemDropView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5E220C79411A94CFE8FD4B2 /* StatusItemDropView.swift */; };
 		35A45A4275021A7CFE08127D /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22B0AB95D3B0B4886C9AFFB3 /* APIClient.swift */; };
 		399261E785348272399A251A /* PreferencesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FA4E4848B1D96539EBA5883 /* PreferencesView.swift */; };
+		48839ADC789FDE5D548AC76E /* KnowledgeGraphView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35042945589ED2243B73B114 /* KnowledgeGraphView.swift */; };
 		542AA8A805D4E83C4AF767EE /* QuickAskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E282AA9AE9B4762B2C1F7925 /* QuickAskView.swift */; };
 		557D9C7D6726574AA06C003C /* OnboardingWizardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 101A3C39C94373C013D7EDC3 /* OnboardingWizardView.swift */; };
 		5E6C756F2B8C1C2CDBB5CC81 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF1E302885AA12D90D376C52 /* LoginView.swift */; };
@@ -20,6 +22,7 @@
 		B4833619E3754AE1D359BACA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 7E3E0BD76685D5B28E22F629 /* Assets.xcassets */; };
 		BCA4E44D43F5B35150BADB73 /* FolderWatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C41F9C7298FEB01CD7EEE4F /* FolderWatcher.swift */; };
 		C52439D0FF6E1FDC9FBBBB88 /* GranolaService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BD87D5E76D988429936D8DC /* GranolaService.swift */; };
+		CFE8A9F18738027917931903 /* IntelligenceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E69F345EBA0C165F5B19AED8 /* IntelligenceView.swift */; };
 		DA7DC9250A7086C8C1DEAFCC /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 086612D00D927C51E7C3F831 /* AuthService.swift */; };
 		DAE59AE6EF92209C5CB80C73 /* CLIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 296CB1E04E43D4CEDE157FED /* CLIService.swift */; };
 		E154FB9B2EF5B2A015C91C98 /* DropZoneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DD4E2B372EA0AFEF4ACFD6D /* DropZoneView.swift */; };
@@ -31,6 +34,7 @@
 		1BD87D5E76D988429936D8DC /* GranolaService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GranolaService.swift; sourceTree = "<group>"; };
 		22B0AB95D3B0B4886C9AFFB3 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		296CB1E04E43D4CEDE157FED /* CLIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLIService.swift; sourceTree = "<group>"; };
+		35042945589ED2243B73B114 /* KnowledgeGraphView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgeGraphView.swift; sourceTree = "<group>"; };
 		4BB0E59D2587CE645F3AA419 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		540029238C72F76B85D8818D /* AskTwinApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AskTwinApp.swift; sourceTree = "<group>"; };
 		5C41F9C7298FEB01CD7EEE4F /* FolderWatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderWatcher.swift; sourceTree = "<group>"; };
@@ -41,9 +45,11 @@
 		8BD7D56216338E88CFF5EE3D /* DocumentPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentPreviewView.swift; sourceTree = "<group>"; };
 		981CB69D7B6D85406FDDCDCB /* DocumentPreviewWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentPreviewWindow.swift; sourceTree = "<group>"; };
 		B1138CB9797B1771E634E6D0 /* AskTwin.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AskTwin.entitlements; sourceTree = "<group>"; };
+		C398462751CD2D2B5CC17038 /* KnowledgeBaseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgeBaseView.swift; sourceTree = "<group>"; };
 		DF41C84A753E8981F03E4E6D /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
 		E282AA9AE9B4762B2C1F7925 /* QuickAskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickAskView.swift; sourceTree = "<group>"; };
 		E5E220C79411A94CFE8FD4B2 /* StatusItemDropView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusItemDropView.swift; sourceTree = "<group>"; };
+		E69F345EBA0C165F5B19AED8 /* IntelligenceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntelligenceView.swift; sourceTree = "<group>"; };
 		EF1E302885AA12D90D376C52 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -55,6 +61,14 @@
 				101A3C39C94373C013D7EDC3 /* OnboardingWizardView.swift */,
 			);
 			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		3B2327A845D7862F65935481 /* Graph */ = {
+			isa = PBXGroup;
+			children = (
+				35042945589ED2243B73B114 /* KnowledgeGraphView.swift */,
+			);
+			path = Graph;
 			sourceTree = "<group>";
 		};
 		42F9E9E63E8CF7FDF3A4E491 /* Resources */ = {
@@ -74,6 +88,14 @@
 				981CB69D7B6D85406FDDCDCB /* DocumentPreviewWindow.swift */,
 			);
 			path = Ingestion;
+			sourceTree = "<group>";
+		};
+		4F240F1DBE4A1CB24630C239 /* Intelligence */ = {
+			isa = PBXGroup;
+			children = (
+				E69F345EBA0C165F5B19AED8 /* IntelligenceView.swift */,
+			);
+			path = Intelligence;
 			sourceTree = "<group>";
 		};
 		51DA5D3C4D3EFF1B88E7816F /* Products */ = {
@@ -158,7 +180,10 @@
 			children = (
 				6C6A60099EB0254EBBED9B6C /* Chat */,
 				FF2DD4E26C76B136D8152FED /* Components */,
+				3B2327A845D7862F65935481 /* Graph */,
 				4317E744896E45F5A00BAEDD /* Ingestion */,
+				4F240F1DBE4A1CB24630C239 /* Intelligence */,
+				F40FD3B31D323B7A7C59FA13 /* Knowledge */,
 				76E9620F817C7BA873059B94 /* MenuBar */,
 				2C29555E91AFD92EBC3A6535 /* Onboarding */,
 				B36053F8C6A1ADDCBC9D42F4 /* Preferences */,
@@ -176,6 +201,14 @@
 				1BD87D5E76D988429936D8DC /* GranolaService.swift */,
 			);
 			path = Services;
+			sourceTree = "<group>";
+		};
+		F40FD3B31D323B7A7C59FA13 /* Knowledge */ = {
+			isa = PBXGroup;
+			children = (
+				C398462751CD2D2B5CC17038 /* KnowledgeBaseView.swift */,
+			);
+			path = Knowledge;
 			sourceTree = "<group>";
 		};
 		FF2DD4E26C76B136D8152FED /* Components */ = {
@@ -288,6 +321,9 @@
 				E154FB9B2EF5B2A015C91C98 /* DropZoneView.swift in Sources */,
 				BCA4E44D43F5B35150BADB73 /* FolderWatcher.swift in Sources */,
 				C52439D0FF6E1FDC9FBBBB88 /* GranolaService.swift in Sources */,
+				CFE8A9F18738027917931903 /* IntelligenceView.swift in Sources */,
+				0E1B0BCB56ACFEC3DECFFD49 /* KnowledgeBaseView.swift in Sources */,
+				48839ADC789FDE5D548AC76E /* KnowledgeGraphView.swift in Sources */,
 				5E6C756F2B8C1C2CDBB5CC81 /* LoginView.swift in Sources */,
 				557D9C7D6726574AA06C003C /* OnboardingWizardView.swift in Sources */,
 				399261E785348272399A251A /* PreferencesView.swift in Sources */,
@@ -358,7 +394,7 @@
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_NAME = AskTwin;
+				PRODUCT_NAME = AskKaya;
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -418,7 +454,7 @@
 				MARKETING_VERSION = 1.0.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
-				PRODUCT_NAME = AskTwin;
+				PRODUCT_NAME = AskKaya;
 				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";

@@ -22,7 +22,7 @@ function getDb(): admin.firestore.Firestore {
 }
 
 // RAG Configuration
-const SIMILARITY_THRESHOLD = 0.3;
+const SIMILARITY_THRESHOLD = 0.05; // Lowered for debugging - chunks have short content
 const TOP_K = 5;
 const TWIN_BOOST = 0.15;      // 15% boost for direct twin matches
 const TAG_BOOST = 0.10;       // 10% boost for expertise area matches
@@ -128,6 +128,9 @@ export async function retrieveChunks(
 
     // Calculate base similarity score
     let score = cosineSimilarity(queryEmbedding, chunk.embedding);
+
+    // Log similarity score with console.log for visibility
+    console.log(`CHUNK_SCORE: ${doc.id} = ${score.toFixed(4)} (threshold: ${threshold}) content: "${chunk.content?.substring(0, 40)}"`);
 
     // Apply twin boost if chunk directly targets this twin
     let boosted = false;
