@@ -39,7 +39,7 @@ struct LoginView: View {
                     }
 
                     VStack(spacing: 8) {
-                        Text("AskTwin")
+                        Text("AskKaya")
                             .font(.system(size: 28, weight: .bold))
                             .foregroundColor(textPrimary)
 
