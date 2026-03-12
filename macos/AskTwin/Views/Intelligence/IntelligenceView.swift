@@ -8,16 +8,9 @@ struct IntelligenceView: View {
     @State private var isLoading = true
     @State private var intelligenceData: IntelligenceData?
 
-    // Granola colors
-    private let bgColor = Color(red: 0.11, green: 0.11, blue: 0.12)
-    private let surfaceColor = Color(red: 0.14, green: 0.14, blue: 0.15)
-    private let borderColor = Color.white.opacity(0.08)
-    private let textPrimary = Color.white
-    private let textSecondary = Color.white.opacity(0.5)
-
     var body: some View {
         ZStack {
-            bgColor.ignoresSafeArea()
+            GranolaTheme.cream.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // Header
@@ -25,10 +18,10 @@ struct IntelligenceView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Intelligence")
                             .font(.system(size: 20, weight: .bold))
-                            .foregroundColor(textPrimary)
+                            .foregroundColor(GranolaTheme.textPrimary)
                         Text("Patterns extracted from your knowledge")
                             .font(.system(size: 13))
-                            .foregroundColor(textSecondary)
+                            .foregroundColor(GranolaTheme.textSecondary)
                     }
 
                     Spacer()
@@ -39,10 +32,10 @@ struct IntelligenceView: View {
                             Text("Extract")
                         }
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(bgColor)
+                        .foregroundColor(GranolaTheme.cream)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
-                        .background(textPrimary)
+                        .background(GranolaTheme.textPrimary)
                         .cornerRadius(6)
                     }
                     .buttonStyle(.plain)
@@ -61,7 +54,7 @@ struct IntelligenceView: View {
                 .padding(.horizontal, 24)
 
                 Rectangle()
-                    .fill(borderColor)
+                    .fill(GranolaTheme.creamBorder)
                     .frame(height: 1)
 
                 // Content
@@ -72,7 +65,7 @@ struct IntelligenceView: View {
                             .scaleEffect(1.2)
                         Text("Analyzing your knowledge base...")
                             .font(.system(size: 14))
-                            .foregroundColor(textSecondary)
+                            .foregroundColor(GranolaTheme.textSecondary)
                     }
                     Spacer()
                 } else if let data = intelligenceData {
@@ -98,10 +91,10 @@ struct IntelligenceView: View {
                     VStack(spacing: 16) {
                         Image(systemName: "sparkles")
                             .font(.system(size: 48))
-                            .foregroundColor(textSecondary.opacity(0.5))
+                            .foregroundColor(GranolaTheme.textSecondary.opacity(0.5))
                         Text("Click Extract to analyze your knowledge")
                             .font(.system(size: 15))
-                            .foregroundColor(textSecondary)
+                            .foregroundColor(GranolaTheme.textSecondary)
                     }
                     Spacer()
                 }
@@ -310,9 +303,6 @@ struct IntelTabButton: View {
     let isSelected: Bool
     let action: () -> Void
 
-    private let textPrimary = Color.white
-    private let textSecondary = Color.white.opacity(0.5)
-
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
@@ -321,10 +311,10 @@ struct IntelTabButton: View {
                 Text(title)
                     .font(.system(size: 13, weight: isSelected ? .semibold : .regular))
             }
-            .foregroundColor(isSelected ? textPrimary : textSecondary)
+            .foregroundColor(isSelected ? GranolaTheme.textPrimary : GranolaTheme.textSecondary)
             .padding(.horizontal, 14)
             .padding(.vertical, 10)
-            .background(isSelected ? Color.white.opacity(0.08) : Color.clear)
+            .background(isSelected ? GranolaTheme.creamDark : Color.clear)
             .cornerRadius(6)
         }
         .buttonStyle(.plain)
@@ -336,15 +326,11 @@ struct IntelTabButton: View {
 struct PeopleSection: View {
     let people: [PersonIntel]
 
-    private let surfaceColor = Color(red: 0.14, green: 0.14, blue: 0.15)
-    private let textPrimary = Color.white
-    private let textSecondary = Color.white.opacity(0.5)
-
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Relationship Network")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(textSecondary)
+                .foregroundColor(GranolaTheme.textSecondary)
                 .textCase(.uppercase)
                 .tracking(0.5)
 
@@ -358,15 +344,11 @@ struct PeopleSection: View {
 struct PersonCard: View {
     let person: PersonIntel
 
-    private let surfaceColor = Color(red: 0.14, green: 0.14, blue: 0.15)
-    private let textPrimary = Color.white
-    private let textSecondary = Color.white.opacity(0.5)
-
     var body: some View {
         HStack(spacing: 14) {
             // Avatar
             Circle()
-                .fill(Color.blue.opacity(0.2))
+                .fill(Color.blue.opacity(0.15))
                 .frame(width: 44, height: 44)
                 .overlay(
                     Text(String(person.name.prefix(1)).uppercased())
@@ -377,18 +359,18 @@ struct PersonCard: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(person.name)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(textPrimary)
+                    .foregroundColor(GranolaTheme.textPrimary)
 
                 if !person.role.isEmpty || !person.company.isEmpty {
                     Text([person.role, person.company].filter { !$0.isEmpty }.joined(separator: " · "))
                         .font(.system(size: 12))
-                        .foregroundColor(textSecondary)
+                        .foregroundColor(GranolaTheme.textSecondary)
                 }
 
                 if !person.context.isEmpty {
                     Text(person.context)
                         .font(.system(size: 12))
-                        .foregroundColor(textSecondary.opacity(0.8))
+                        .foregroundColor(GranolaTheme.textSecondary.opacity(0.8))
                         .lineLimit(2)
                 }
             }
@@ -399,21 +381,21 @@ struct PersonCard: View {
                 if person.meetingCount > 0 {
                     Text("\(person.meetingCount) meetings")
                         .font(.system(size: 11))
-                        .foregroundColor(textSecondary)
+                        .foregroundColor(GranolaTheme.textSecondary)
                 }
                 if let lastContact = person.lastContact {
                     Text(lastContact)
                         .font(.system(size: 11))
-                        .foregroundColor(textSecondary.opacity(0.7))
+                        .foregroundColor(GranolaTheme.textSecondary.opacity(0.7))
                 }
             }
         }
         .padding(14)
-        .background(surfaceColor)
+        .background(GranolaTheme.creamDark)
         .cornerRadius(10)
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                .stroke(GranolaTheme.creamBorder, lineWidth: 1)
         )
     }
 }
@@ -423,13 +405,11 @@ struct PersonCard: View {
 struct ActionsSection: View {
     let actions: [ActionItem]
 
-    private let textSecondary = Color.white.opacity(0.5)
-
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Action Items")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(textSecondary)
+                .foregroundColor(GranolaTheme.textSecondary)
                 .textCase(.uppercase)
                 .tracking(0.5)
 
@@ -443,21 +423,17 @@ struct ActionsSection: View {
 struct ActionCard: View {
     let action: ActionItem
 
-    private let surfaceColor = Color(red: 0.14, green: 0.14, blue: 0.15)
-    private let textPrimary = Color.white
-    private let textSecondary = Color.white.opacity(0.5)
-
     var body: some View {
         HStack(spacing: 12) {
             // Status indicator
             Image(systemName: action.status == .completed ? "checkmark.circle.fill" : "circle")
                 .font(.system(size: 18))
-                .foregroundColor(action.status == .completed ? .green : textSecondary)
+                .foregroundColor(action.status == .completed ? .green : GranolaTheme.textSecondary)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(action.task)
                     .font(.system(size: 14))
-                    .foregroundColor(textPrimary)
+                    .foregroundColor(GranolaTheme.textPrimary)
                     .strikethrough(action.status == .completed)
 
                 HStack(spacing: 8) {
@@ -468,7 +444,7 @@ struct ActionCard: View {
                             Text(action.owner)
                         }
                         .font(.system(size: 11))
-                        .foregroundColor(textSecondary)
+                        .foregroundColor(GranolaTheme.textSecondary)
                     }
 
                     if !action.dueDate.isEmpty {
@@ -478,23 +454,23 @@ struct ActionCard: View {
                             Text(action.dueDate)
                         }
                         .font(.system(size: 11))
-                        .foregroundColor(action.dueDate.lowercased().contains("overdue") ? .red.opacity(0.8) : textSecondary)
+                        .foregroundColor(action.dueDate.lowercased().contains("overdue") ? .red : GranolaTheme.textSecondary)
                     }
 
                     Text("from \(action.source)")
                         .font(.system(size: 11))
-                        .foregroundColor(textSecondary.opacity(0.7))
+                        .foregroundColor(GranolaTheme.textSecondary.opacity(0.7))
                 }
             }
 
             Spacer()
         }
         .padding(14)
-        .background(surfaceColor)
+        .background(GranolaTheme.creamDark)
         .cornerRadius(10)
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                .stroke(GranolaTheme.creamBorder, lineWidth: 1)
         )
     }
 }
@@ -504,13 +480,11 @@ struct ActionCard: View {
 struct PatternsSection: View {
     let patterns: [PatternIntel]
 
-    private let textSecondary = Color.white.opacity(0.5)
-
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Recurring Patterns")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(textSecondary)
+                .foregroundColor(GranolaTheme.textSecondary)
                 .textCase(.uppercase)
                 .tracking(0.5)
 
@@ -524,44 +498,40 @@ struct PatternsSection: View {
 struct PatternCard: View {
     let pattern: PatternIntel
 
-    private let surfaceColor = Color(red: 0.14, green: 0.14, blue: 0.15)
-    private let textPrimary = Color.white
-    private let textSecondary = Color.white.opacity(0.5)
-
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Image(systemName: "chart.bar.fill")
                     .font(.system(size: 14))
-                    .foregroundColor(.purple.opacity(0.8))
+                    .foregroundColor(.purple)
 
                 Text(pattern.name)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(textPrimary)
+                    .foregroundColor(GranolaTheme.textPrimary)
 
                 Spacer()
 
                 if pattern.frequency > 0 {
                     Text("\(pattern.frequency)x")
                         .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.purple.opacity(0.8))
+                        .foregroundColor(.purple)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(Color.purple.opacity(0.15))
+                        .background(Color.purple.opacity(0.1))
                         .cornerRadius(4)
                 }
             }
 
             Text(pattern.description)
                 .font(.system(size: 13))
-                .foregroundColor(textSecondary)
+                .foregroundColor(GranolaTheme.textSecondary)
                 .lineSpacing(4)
 
             if !pattern.examples.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Examples")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(textSecondary.opacity(0.7))
+                        .foregroundColor(GranolaTheme.textSecondary.opacity(0.7))
 
                     ForEach(pattern.examples.prefix(3), id: \.self) { example in
                         HStack(alignment: .top, spacing: 8) {
@@ -571,18 +541,18 @@ struct PatternCard: View {
                                 .padding(.top, 6)
                             Text(example)
                                 .font(.system(size: 12))
-                                .foregroundColor(textSecondary.opacity(0.9))
+                                .foregroundColor(GranolaTheme.textSecondary)
                         }
                     }
                 }
             }
         }
         .padding(16)
-        .background(surfaceColor)
+        .background(GranolaTheme.creamDark)
         .cornerRadius(10)
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                .stroke(GranolaTheme.creamBorder, lineWidth: 1)
         )
     }
 }
@@ -592,13 +562,11 @@ struct PatternCard: View {
 struct ConceptsSection: View {
     let concepts: [ConceptIntel]
 
-    private let textSecondary = Color.white.opacity(0.5)
-
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Mental Models & Frameworks")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(textSecondary)
+                .foregroundColor(GranolaTheme.textSecondary)
                 .textCase(.uppercase)
                 .tracking(0.5)
 
@@ -612,27 +580,23 @@ struct ConceptsSection: View {
 struct ConceptCard: View {
     let concept: ConceptIntel
 
-    private let surfaceColor = Color(red: 0.14, green: 0.14, blue: 0.15)
-    private let textPrimary = Color.white
-    private let textSecondary = Color.white.opacity(0.5)
-
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Image(systemName: "lightbulb.fill")
                     .font(.system(size: 14))
-                    .foregroundColor(.yellow.opacity(0.8))
+                    .foregroundColor(.orange)
 
                 Text(concept.name)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(textPrimary)
+                    .foregroundColor(GranolaTheme.textPrimary)
 
                 Spacer()
             }
 
             Text(concept.description)
                 .font(.system(size: 13))
-                .foregroundColor(textSecondary)
+                .foregroundColor(GranolaTheme.textSecondary)
                 .lineSpacing(4)
 
             HStack(spacing: 12) {
@@ -643,7 +607,7 @@ struct ConceptCard: View {
                         Text(concept.source)
                     }
                     .font(.system(size: 11))
-                    .foregroundColor(textSecondary.opacity(0.7))
+                    .foregroundColor(GranolaTheme.textSecondary.opacity(0.7))
                 }
 
                 if !concept.relatedPeople.isEmpty {
@@ -653,16 +617,16 @@ struct ConceptCard: View {
                         Text(concept.relatedPeople.joined(separator: ", "))
                     }
                     .font(.system(size: 11))
-                    .foregroundColor(textSecondary.opacity(0.7))
+                    .foregroundColor(GranolaTheme.textSecondary.opacity(0.7))
                 }
             }
         }
         .padding(16)
-        .background(surfaceColor)
+        .background(GranolaTheme.creamDark)
         .cornerRadius(10)
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                .stroke(GranolaTheme.creamBorder, lineWidth: 1)
         )
     }
 }

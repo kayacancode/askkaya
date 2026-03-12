@@ -25,7 +25,16 @@ struct ContentView: View {
     }
 }
 
-// MARK: - Main View (Granola-style Dark)
+// MARK: - Granola Light Theme Colors
+
+enum GranolaTheme {
+    static let cream = Color(red: 0.99, green: 0.98, blue: 0.94)      // Main background
+    static let creamDark = Color(red: 0.96, green: 0.95, blue: 0.91)  // Sidebar/secondary
+    static let creamBorder = Color(red: 0.90, green: 0.89, blue: 0.85) // Borders
+    static let textPrimary = Color(red: 0.12, green: 0.12, blue: 0.12) // Near black
+    static let textSecondary = Color(red: 0.45, green: 0.45, blue: 0.43) // Gray
+    static let accent = Color(red: 0.20, green: 0.20, blue: 0.18)     // Dark accent
+}
 
 enum MainViewTab {
     case chat
@@ -38,17 +47,13 @@ struct MainView: View {
     @State private var showSidebar = true
     @State private var selectedTab: MainViewTab = .chat
 
-    // Granola colors
-    private let bgColor = Color(red: 0.11, green: 0.11, blue: 0.12)
-    private let sidebarColor = Color(red: 0.09, green: 0.09, blue: 0.10)
-
     var body: some View {
         HStack(spacing: 0) {
-            // Dark sidebar
+            // Light sidebar
             if showSidebar {
                 TwinSidebar(selectedTab: $selectedTab)
                     .frame(width: 220)
-                    .background(sidebarColor)
+                    .background(GranolaTheme.creamDark)
             }
 
             // Main content
@@ -65,12 +70,12 @@ struct MainView: View {
                 IntelligenceView()
             }
         }
-        .background(bgColor)
+        .background(GranolaTheme.cream)
         .toolbar {
             ToolbarItem(placement: .navigation) {
                 Button(action: { withAnimation(.easeOut(duration: 0.2)) { showSidebar.toggle() } }) {
                     Image(systemName: "sidebar.left")
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundColor(GranolaTheme.textSecondary)
                 }
             }
         }
@@ -78,32 +83,30 @@ struct MainView: View {
 }
 
 struct EmptyStateView: View {
-    private let bgColor = Color(red: 0.11, green: 0.11, blue: 0.12)
-
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "bubble.left.and.bubble.right")
                 .font(.system(size: 48, weight: .light))
-                .foregroundColor(.white.opacity(0.2))
+                .foregroundColor(GranolaTheme.textSecondary.opacity(0.4))
 
             Text("Select a twin to start")
                 .font(.system(size: 15))
-                .foregroundColor(.white.opacity(0.4))
+                .foregroundColor(GranolaTheme.textSecondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(bgColor)
+        .background(GranolaTheme.cream)
     }
 }
 
-// MARK: - Sidebar (Granola Dark)
+// MARK: - Sidebar (Granola Light)
 
 struct TwinSidebar: View {
     @EnvironmentObject var appState: AppState
     @Binding var selectedTab: MainViewTab
 
-    private let textPrimary = Color.white
-    private let textSecondary = Color.white.opacity(0.5)
-    private let borderColor = Color.white.opacity(0.08)
+    private let textPrimary = GranolaTheme.textPrimary
+    private let textSecondary = GranolaTheme.textSecondary
+    private let borderColor = GranolaTheme.creamBorder
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -158,18 +161,18 @@ struct TwinSidebar: View {
                     HStack(spacing: 10) {
                         Image(systemName: "sparkles")
                             .font(.system(size: 14))
-                            .foregroundColor(selectedTab == .intelligence ? .yellow : textSecondary)
+                            .foregroundColor(selectedTab == .intelligence ? .orange : textSecondary)
                             .frame(width: 18)
 
                         Text("Intelligence")
                             .font(.system(size: 13))
-                            .foregroundColor(selectedTab == .intelligence ? textPrimary : textPrimary.opacity(0.8))
+                            .foregroundColor(selectedTab == .intelligence ? textPrimary : textPrimary.opacity(0.7))
 
                         Spacer()
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
-                    .background(selectedTab == .intelligence ? Color.white.opacity(0.08) : Color.clear)
+                    .background(selectedTab == .intelligence ? GranolaTheme.cream : Color.clear)
                     .cornerRadius(6)
                     .padding(.horizontal, 8)
                 }
@@ -185,13 +188,13 @@ struct TwinSidebar: View {
 
                         Text("Knowledge Base")
                             .font(.system(size: 13))
-                            .foregroundColor(selectedTab == .knowledge ? textPrimary : textPrimary.opacity(0.8))
+                            .foregroundColor(selectedTab == .knowledge ? textPrimary : textPrimary.opacity(0.7))
 
                         Spacer()
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 8)
-                    .background(selectedTab == .knowledge ? Color.white.opacity(0.08) : Color.clear)
+                    .background(selectedTab == .knowledge ? GranolaTheme.cream : Color.clear)
                     .cornerRadius(6)
                     .padding(.horizontal, 8)
                 }
@@ -206,7 +209,7 @@ struct TwinSidebar: View {
 
             HStack(spacing: 10) {
                 Circle()
-                    .fill(Color.white.opacity(0.1))
+                    .fill(GranolaTheme.creamBorder)
                     .frame(width: 28, height: 28)
                     .overlay(
                         Text(String(appState.currentUser?.email.prefix(1).uppercased() ?? "?"))
@@ -239,25 +242,22 @@ struct GranolaTwinRow: View {
     let twin: Twin
     let isSelected: Bool
 
-    private let textPrimary = Color.white
-    private let textSecondary = Color.white.opacity(0.5)
-
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: twin.icon)
                 .font(.system(size: 13))
-                .foregroundColor(isSelected ? textPrimary : textSecondary)
+                .foregroundColor(isSelected ? GranolaTheme.textPrimary : GranolaTheme.textSecondary)
                 .frame(width: 18)
 
             Text(twin.name)
                 .font(.system(size: 13))
-                .foregroundColor(isSelected ? textPrimary : textPrimary.opacity(0.8))
+                .foregroundColor(isSelected ? GranolaTheme.textPrimary : GranolaTheme.textPrimary.opacity(0.7))
 
             Spacer()
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
-        .background(isSelected ? Color.white.opacity(0.08) : Color.clear)
+        .background(isSelected ? GranolaTheme.cream : Color.clear)
         .cornerRadius(6)
         .padding(.horizontal, 8)
     }
@@ -273,7 +273,7 @@ struct TwinRow: View {
     }
 }
 
-// MARK: - Chat View (Granola-style Dark)
+// MARK: - Chat View (Granola Light)
 
 struct ChatView: View {
     let twin: Twin
@@ -283,17 +283,10 @@ struct ChatView: View {
     @EnvironmentObject var appState: AppState
     @FocusState private var isInputFocused: Bool
 
-    // Granola colors
-    private let bgColor = Color(red: 0.11, green: 0.11, blue: 0.12)
-    private let surfaceColor = Color(red: 0.14, green: 0.14, blue: 0.15)
-    private let borderColor = Color.white.opacity(0.08)
-    private let textPrimary = Color.white
-    private let textSecondary = Color.white.opacity(0.6)
-
     var body: some View {
         ZStack {
-            // Dark background
-            bgColor.ignoresSafeArea()
+            // Light cream background
+            GranolaTheme.cream.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // Header with twin selector
@@ -302,18 +295,18 @@ struct ChatView: View {
                     HStack(spacing: 6) {
                         Text("Ask \(twin.name)")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(textPrimary)
+                            .foregroundColor(GranolaTheme.textPrimary)
                         Image(systemName: "chevron.down")
                             .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(textSecondary)
+                            .foregroundColor(GranolaTheme.textSecondary)
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(surfaceColor)
+                    .background(GranolaTheme.creamDark)
                     .cornerRadius(8)
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
-                            .stroke(borderColor, lineWidth: 1)
+                            .stroke(GranolaTheme.creamBorder, lineWidth: 1)
                     )
 
                     Spacer()
@@ -326,7 +319,7 @@ struct ChatView: View {
                             Text("New chat")
                                 .font(.system(size: 13))
                         }
-                        .foregroundColor(textSecondary)
+                        .foregroundColor(GranolaTheme.textSecondary)
                     }
                     .buttonStyle(.plain)
 
@@ -334,18 +327,18 @@ struct ChatView: View {
                     Button(action: {}) {
                         Image(systemName: "slider.horizontal.3")
                             .font(.system(size: 14))
-                            .foregroundColor(textSecondary)
+                            .foregroundColor(GranolaTheme.textSecondary)
                     }
                     .buttonStyle(.plain)
                     .padding(.leading, 12)
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
-                .background(surfaceColor)
+                .background(GranolaTheme.creamDark)
                 .overlay(
                     Rectangle()
                         .frame(height: 1)
-                        .foregroundColor(borderColor),
+                        .foregroundColor(GranolaTheme.creamBorder),
                     alignment: .bottom
                 )
 
@@ -354,7 +347,7 @@ struct ChatView: View {
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 20) {
                             ForEach(messages) { message in
-                                GranolaMessageView(message: message, textPrimary: textPrimary, textSecondary: textSecondary, surfaceColor: surfaceColor)
+                                GranolaMessageView(message: message)
                                     .id(message.id)
                             }
 
@@ -380,10 +373,6 @@ struct ChatView: View {
                     isLoading: isLoading,
                     isFocused: _isInputFocused,
                     twinName: twin.name,
-                    surfaceColor: surfaceColor,
-                    borderColor: borderColor,
-                    textPrimary: textPrimary,
-                    textSecondary: textSecondary,
                     onSubmit: { Task { await sendMessage() } }
                 )
             }
@@ -431,9 +420,6 @@ struct ChatView: View {
 
 struct GranolaMessageView: View {
     let message: ChatMessage
-    let textPrimary: Color
-    let textSecondary: Color
-    let surfaceColor: Color
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -443,14 +429,14 @@ struct GranolaMessageView: View {
                     Spacer(minLength: 60)
                     Text(message.content)
                         .font(.system(size: 14))
-                        .foregroundColor(textPrimary)
+                        .foregroundColor(GranolaTheme.textPrimary)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 10)
-                        .background(surfaceColor.opacity(1.5))
+                        .background(GranolaTheme.creamDark)
                         .cornerRadius(16)
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
-                                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                                .stroke(GranolaTheme.creamBorder, lineWidth: 1)
                         )
                 }
             } else {
@@ -458,7 +444,7 @@ struct GranolaMessageView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(message.content)
                         .font(.system(size: 14))
-                        .foregroundColor(textPrimary.opacity(0.95))
+                        .foregroundColor(GranolaTheme.textPrimary)
                         .textSelection(.enabled)
                         .lineSpacing(5)
 
@@ -470,7 +456,7 @@ struct GranolaMessageView: View {
                             Text("Low confidence")
                                 .font(.system(size: 11))
                         }
-                        .foregroundColor(.orange.opacity(0.8))
+                        .foregroundColor(.orange)
                     }
 
                     if message.escalated {
@@ -480,7 +466,7 @@ struct GranolaMessageView: View {
                             Text("Sent for review")
                                 .font(.system(size: 11))
                         }
-                        .foregroundColor(.orange.opacity(0.8))
+                        .foregroundColor(.orange)
                     }
                 }
             }
@@ -494,12 +480,7 @@ struct MessageView: View {
     let message: ChatMessage
 
     var body: some View {
-        GranolaMessageView(
-            message: message,
-            textPrimary: .white,
-            textSecondary: .white.opacity(0.6),
-            surfaceColor: Color(red: 0.14, green: 0.14, blue: 0.15)
-        )
+        GranolaMessageView(message: message)
     }
 }
 
@@ -510,10 +491,6 @@ struct GranolaInputBar: View {
     let isLoading: Bool
     @FocusState var isFocused: Bool
     let twinName: String
-    let surfaceColor: Color
-    let borderColor: Color
-    let textPrimary: Color
-    let textSecondary: Color
     let onSubmit: () -> Void
 
     var body: some View {
@@ -522,7 +499,7 @@ struct GranolaInputBar: View {
             Button(action: {}) {
                 Image(systemName: "paperclip")
                     .font(.system(size: 14))
-                    .foregroundColor(textSecondary)
+                    .foregroundColor(GranolaTheme.textSecondary)
             }
             .buttonStyle(.plain)
 
@@ -530,7 +507,7 @@ struct GranolaInputBar: View {
             TextField("Ask \(twinName)'s twin...", text: $text, axis: .vertical)
                 .textFieldStyle(.plain)
                 .font(.system(size: 14))
-                .foregroundColor(textPrimary)
+                .foregroundColor(GranolaTheme.textPrimary)
                 .lineLimit(1...4)
                 .focused($isFocused)
                 .onSubmit {
@@ -550,7 +527,7 @@ struct GranolaInputBar: View {
                     Button(action: {}) {
                         Image(systemName: "slider.horizontal.3")
                             .font(.system(size: 13))
-                            .foregroundColor(textSecondary)
+                            .foregroundColor(GranolaTheme.textSecondary)
                     }
                     .buttonStyle(.plain)
 
@@ -558,7 +535,7 @@ struct GranolaInputBar: View {
                     Button(action: {}) {
                         Image(systemName: "mic")
                             .font(.system(size: 13))
-                            .foregroundColor(textSecondary)
+                            .foregroundColor(GranolaTheme.textSecondary)
                     }
                     .buttonStyle(.plain)
                 }
@@ -566,11 +543,11 @@ struct GranolaInputBar: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
-        .background(surfaceColor)
+        .background(GranolaTheme.creamDark)
         .overlay(
             Rectangle()
                 .frame(height: 1)
-                .foregroundColor(borderColor),
+                .foregroundColor(GranolaTheme.creamBorder),
             alignment: .top
         )
     }
@@ -590,10 +567,6 @@ struct FloatingInputBar: View {
             isLoading: isLoading,
             isFocused: _isFocused,
             twinName: "Kaya",
-            surfaceColor: Color(red: 0.14, green: 0.14, blue: 0.15),
-            borderColor: Color.white.opacity(0.08),
-            textPrimary: .white,
-            textSecondary: .white.opacity(0.6),
             onSubmit: onSubmit
         )
     }
@@ -608,7 +581,7 @@ struct GranolaLoadingIndicator: View {
         HStack(spacing: 4) {
             ForEach(0..<3) { index in
                 Circle()
-                    .fill(Color.white.opacity(0.4))
+                    .fill(GranolaTheme.textSecondary)
                     .frame(width: 6, height: 6)
                     .scaleEffect(animating ? 1.0 : 0.5)
                     .animation(

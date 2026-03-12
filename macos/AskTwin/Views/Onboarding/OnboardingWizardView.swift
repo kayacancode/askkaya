@@ -1,7 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// 3-step onboarding wizard for new users (Granola Dark Style)
+/// 3-step onboarding wizard for new users (Granola Light Style)
 struct OnboardingWizardView: View {
     @EnvironmentObject var appState: AppState
     @State private var currentStep = 0
@@ -12,20 +12,16 @@ struct OnboardingWizardView: View {
 
     let onComplete: () -> Void
 
-    // Granola colors
-    private let bgColor = Color(red: 0.11, green: 0.11, blue: 0.12)
-    private let accentColor = Color.white
-
     var body: some View {
         ZStack {
-            bgColor.ignoresSafeArea()
+            GranolaTheme.cream.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 // Progress indicator
                 HStack(spacing: 6) {
                     ForEach(0..<3) { index in
                         Capsule()
-                            .fill(index <= currentStep ? accentColor : Color.white.opacity(0.15))
+                            .fill(index <= currentStep ? GranolaTheme.textPrimary : GranolaTheme.creamBorder)
                             .frame(height: 3)
                     }
                 }
@@ -175,7 +171,7 @@ struct OnboardingWizardView: View {
     }
 }
 
-// MARK: - Step 1: Ingestion (Granola Dark)
+// MARK: - Step 1: Ingestion (Granola Light)
 
 struct IngestionStepView: View {
     @Binding var droppedFiles: [URL]
@@ -184,65 +180,58 @@ struct IngestionStepView: View {
 
     @State private var isTargeted = false
 
-    // Granola colors
-    private let bgColor = Color(red: 0.11, green: 0.11, blue: 0.12)
-    private let surfaceColor = Color(red: 0.14, green: 0.14, blue: 0.15)
-    private let borderColor = Color.white.opacity(0.1)
-    private let textPrimary = Color.white
-    private let textSecondary = Color.white.opacity(0.5)
-
     var body: some View {
         ZStack {
-            bgColor.ignoresSafeArea()
+            GranolaTheme.cream.ignoresSafeArea()
 
             VStack(spacing: 24) {
                 Spacer()
 
                 Text("Build Your Knowledge Base")
                     .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(textPrimary)
+                    .foregroundColor(GranolaTheme.textPrimary)
 
                 Text("Drop files to teach your twin what you know")
                     .font(.system(size: 14))
-                    .foregroundColor(textSecondary)
+                    .foregroundColor(GranolaTheme.textSecondary)
 
                 // Drop zone
                 ZStack {
                     RoundedRectangle(cornerRadius: 12)
                         .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [8]))
-                        .foregroundColor(isTargeted ? textPrimary : borderColor)
+                        .foregroundColor(isTargeted ? GranolaTheme.textPrimary : GranolaTheme.creamBorder)
                         .background(
                             RoundedRectangle(cornerRadius: 12)
-                                .fill(isTargeted ? Color.white.opacity(0.05) : Color.clear)
+                                .fill(isTargeted ? GranolaTheme.creamDark : Color.clear)
                         )
 
                     VStack(spacing: 16) {
                         Image(systemName: droppedFiles.isEmpty ? "doc.badge.plus" : "checkmark.circle.fill")
                             .font(.system(size: 40))
-                            .foregroundColor(droppedFiles.isEmpty ? textSecondary : .green.opacity(0.8))
+                            .foregroundColor(droppedFiles.isEmpty ? GranolaTheme.textSecondary : .green)
 
                         if droppedFiles.isEmpty {
                             Text("Drop PDFs, text files, or meeting notes")
                                 .font(.system(size: 14))
-                                .foregroundColor(textSecondary)
+                                .foregroundColor(GranolaTheme.textSecondary)
                         } else {
                             Text("\(droppedFiles.count) file\(droppedFiles.count == 1 ? "" : "s") ready")
                                 .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(textPrimary)
+                                .foregroundColor(GranolaTheme.textPrimary)
 
                             // File list
                             VStack(alignment: .leading, spacing: 6) {
                                 ForEach(droppedFiles.prefix(5), id: \.self) { url in
                                     HStack {
                                         Image(systemName: "doc.fill")
-                                            .foregroundColor(textSecondary)
+                                            .foregroundColor(GranolaTheme.textSecondary)
                                         Text(url.lastPathComponent)
-                                            .foregroundColor(textPrimary.opacity(0.9))
+                                            .foregroundColor(GranolaTheme.textPrimary.opacity(0.9))
                                             .lineLimit(1)
                                         Spacer()
                                         Button(action: { droppedFiles.removeAll { $0 == url } }) {
                                             Image(systemName: "xmark.circle.fill")
-                                                .foregroundColor(textSecondary)
+                                                .foregroundColor(GranolaTheme.textSecondary)
                                         }
                                         .buttonStyle(.plain)
                                     }
@@ -251,7 +240,7 @@ struct IngestionStepView: View {
                                 if droppedFiles.count > 5 {
                                     Text("+ \(droppedFiles.count - 5) more")
                                         .font(.system(size: 12))
-                                        .foregroundColor(textSecondary)
+                                        .foregroundColor(GranolaTheme.textSecondary)
                                 }
                             }
                             .padding(.horizontal)
@@ -271,7 +260,7 @@ struct IngestionStepView: View {
                     selectFiles()
                 }
                 .font(.system(size: 13))
-                .foregroundColor(textSecondary)
+                .foregroundColor(GranolaTheme.textSecondary)
                 .buttonStyle(.plain)
 
                 Spacer()
@@ -282,10 +271,10 @@ struct IngestionStepView: View {
                     Button(action: onContinue) {
                         Text(droppedFiles.isEmpty ? "Skip for Now" : "Continue")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(bgColor)
+                            .foregroundColor(GranolaTheme.cream)
                             .frame(width: 130)
                             .padding(.vertical, 10)
-                            .background(textPrimary)
+                            .background(GranolaTheme.textPrimary)
                             .cornerRadius(8)
                     }
                     .buttonStyle(.plain)
@@ -326,22 +315,16 @@ struct IngestionStepView: View {
     }
 }
 
-// MARK: - Step 2: Insights (Granola Dark)
+// MARK: - Step 2: Insights (Granola Light)
 
 struct InsightsStepView: View {
     let insights: [String]
     let isLoading: Bool
     let onContinue: () -> Void
 
-    // Granola colors
-    private let bgColor = Color(red: 0.11, green: 0.11, blue: 0.12)
-    private let surfaceColor = Color(red: 0.14, green: 0.14, blue: 0.15)
-    private let textPrimary = Color.white
-    private let textSecondary = Color.white.opacity(0.5)
-
     var body: some View {
         ZStack {
-            bgColor.ignoresSafeArea()
+            GranolaTheme.cream.ignoresSafeArea()
 
             VStack(spacing: 24) {
                 Spacer()
@@ -352,35 +335,35 @@ struct InsightsStepView: View {
                             .scaleEffect(1.2)
                         Text("Analyzing your knowledge...")
                             .font(.system(size: 14))
-                            .foregroundColor(textSecondary)
+                            .foregroundColor(GranolaTheme.textSecondary)
                     }
                 } else {
                     Text("Your Knowledge Profile")
                         .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(textPrimary)
+                        .foregroundColor(GranolaTheme.textPrimary)
 
                     Text("Here's what we learned about your expertise")
                         .font(.system(size: 14))
-                        .foregroundColor(textSecondary)
+                        .foregroundColor(GranolaTheme.textSecondary)
 
                     // Insights list
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(insights, id: \.self) { insight in
                             HStack(alignment: .top, spacing: 12) {
                                 Image(systemName: "sparkle")
-                                    .foregroundColor(.yellow.opacity(0.8))
+                                    .foregroundColor(.orange)
                                     .font(.system(size: 14))
                                 Text(insight)
                                     .font(.system(size: 14))
-                                    .foregroundColor(textPrimary.opacity(0.9))
+                                    .foregroundColor(GranolaTheme.textPrimary.opacity(0.9))
                             }
                             .padding(14)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(surfaceColor)
+                            .background(GranolaTheme.creamDark)
                             .cornerRadius(8)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                                    .stroke(GranolaTheme.creamBorder, lineWidth: 1)
                             )
                         }
                     }
@@ -390,10 +373,10 @@ struct InsightsStepView: View {
                         VStack(spacing: 12) {
                             Image(systemName: "doc.text.magnifyingglass")
                                 .font(.system(size: 40))
-                                .foregroundColor(textSecondary)
+                                .foregroundColor(GranolaTheme.textSecondary)
                             Text("Add documents to see insights")
                                 .font(.system(size: 14))
-                                .foregroundColor(textSecondary)
+                                .foregroundColor(GranolaTheme.textSecondary)
                         }
                         .padding(.vertical, 40)
                     }
@@ -407,10 +390,10 @@ struct InsightsStepView: View {
                     Button(action: onContinue) {
                         Text("Continue")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(bgColor)
+                            .foregroundColor(GranolaTheme.cream)
                             .frame(width: 130)
                             .padding(.vertical, 10)
-                            .background(textPrimary)
+                            .background(GranolaTheme.textPrimary)
                             .cornerRadius(8)
                     }
                     .buttonStyle(.plain)
@@ -424,17 +407,11 @@ struct InsightsStepView: View {
     }
 }
 
-// MARK: - Step 3: Integrations (Granola Dark)
+// MARK: - Step 3: Integrations (Granola Light)
 
 struct IntegrationsStepView: View {
     @Binding var selectedIntegrations: Set<String>
     let onComplete: () -> Void
-
-    // Granola colors
-    private let bgColor = Color(red: 0.11, green: 0.11, blue: 0.12)
-    private let surfaceColor = Color(red: 0.14, green: 0.14, blue: 0.15)
-    private let textPrimary = Color.white
-    private let textSecondary = Color.white.opacity(0.5)
 
     let integrations = [
         Integration(id: "telegram", name: "Telegram", icon: "paperplane.fill", description: "Ask questions via @AskKayaBot"),
@@ -444,18 +421,18 @@ struct IntegrationsStepView: View {
 
     var body: some View {
         ZStack {
-            bgColor.ignoresSafeArea()
+            GranolaTheme.cream.ignoresSafeArea()
 
             VStack(spacing: 24) {
                 Spacer()
 
                 Text("Connect Your Twin")
                     .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(textPrimary)
+                    .foregroundColor(GranolaTheme.textPrimary)
 
                 Text("Choose how you want to interact with your knowledge")
                     .font(.system(size: 14))
-                    .foregroundColor(textSecondary)
+                    .foregroundColor(GranolaTheme.textSecondary)
 
                 // Integration options
                 VStack(spacing: 10) {
@@ -480,18 +457,18 @@ struct IntegrationsStepView: View {
                     VStack(spacing: 8) {
                         Text("To connect Telegram:")
                             .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(textPrimary)
+                            .foregroundColor(GranolaTheme.textPrimary)
                         Text("1. Open @AskKayaBot in Telegram\n2. Send /link to connect your account")
                             .font(.system(size: 12))
-                            .foregroundColor(textSecondary)
+                            .foregroundColor(GranolaTheme.textSecondary)
                             .multilineTextAlignment(.center)
                     }
                     .padding(14)
-                    .background(Color.white.opacity(0.05))
+                    .background(GranolaTheme.creamDark)
                     .cornerRadius(8)
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                            .stroke(GranolaTheme.creamBorder, lineWidth: 1)
                     )
                     .padding(.horizontal, 50)
                 }
@@ -504,10 +481,10 @@ struct IntegrationsStepView: View {
                     Button(action: onComplete) {
                         Text("Get Started")
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(bgColor)
+                            .foregroundColor(GranolaTheme.cream)
                             .frame(width: 130)
                             .padding(.vertical, 10)
-                            .background(textPrimary)
+                            .background(GranolaTheme.textPrimary)
                             .cornerRadius(8)
                     }
                     .buttonStyle(.plain)
@@ -531,39 +508,35 @@ struct GranolaIntegrationRow: View {
     let isSelected: Bool
     let onToggle: () -> Void
 
-    private let surfaceColor = Color(red: 0.14, green: 0.14, blue: 0.15)
-    private let textPrimary = Color.white
-    private let textSecondary = Color.white.opacity(0.5)
-
     var body: some View {
         Button(action: onToggle) {
             HStack(spacing: 14) {
                 Image(systemName: integration.icon)
                     .font(.system(size: 18))
-                    .foregroundColor(isSelected ? textPrimary : textSecondary)
+                    .foregroundColor(isSelected ? GranolaTheme.textPrimary : GranolaTheme.textSecondary)
                     .frame(width: 28)
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(integration.name)
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(textPrimary)
+                        .foregroundColor(GranolaTheme.textPrimary)
                     Text(integration.description)
                         .font(.system(size: 12))
-                        .foregroundColor(textSecondary)
+                        .foregroundColor(GranolaTheme.textSecondary)
                 }
 
                 Spacer()
 
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(isSelected ? textPrimary : textSecondary)
+                    .foregroundColor(isSelected ? GranolaTheme.textPrimary : GranolaTheme.textSecondary)
                     .font(.system(size: 20))
             }
             .padding(14)
-            .background(isSelected ? Color.white.opacity(0.08) : surfaceColor)
+            .background(isSelected ? GranolaTheme.cream : GranolaTheme.creamDark)
             .cornerRadius(10)
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(isSelected ? Color.white.opacity(0.2) : Color.white.opacity(0.05), lineWidth: 1)
+                    .stroke(isSelected ? GranolaTheme.textSecondary.opacity(0.3) : GranolaTheme.creamBorder, lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
