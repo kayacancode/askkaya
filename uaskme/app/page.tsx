@@ -359,137 +359,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* For Teams */}
-      <section id="teams" style={{ padding: '100px 0', background: 'white' }}>
-        <div className="container">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            style={{ textAlign: 'center', marginBottom: '64px' }}
-          >
-            <h2 style={{
-              fontSize: 'clamp(36px, 5vw, 52px)',
-              fontWeight: 600,
-              color: '#22C55E',
-              marginBottom: '24px',
-              letterSpacing: '-0.02em'
-            }}>
-              For your organization
-            </h2>
-            <p style={{
-              fontSize: '20px',
-              color: '#4A5A4A',
-              maxWidth: '600px',
-              margin: '0 auto'
-            }}>
-              Give your team members their own digital twin — scale expertise across your entire company
-            </p>
-          </motion.div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', maxWidth: '1000px', margin: '0 auto' }}>
-            {[
-              {
-                name: 'Sophie',
-                role: 'Head of Sales',
-                image: '/team/sophie.jpeg',
-                queries: '847 questions answered this month',
-                example: '"What\'s our enterprise pricing?"'
-              },
-              {
-                name: 'Yiliu',
-                role: 'Support Lead',
-                image: '/team/yiliu.jpeg',
-                queries: '1.2k questions answered this month',
-                example: '"How do I reset my password?"'
-              },
-              {
-                name: 'Jordan',
-                role: 'Product Manager',
-                image: '/team/jordan.jpeg',
-                queries: '523 questions answered this month',
-                example: '"When is v2.0 launching?"'
-              }
-            ].map((member, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                style={{
-                  padding: '32px',
-                  background: '#FAFAFA',
-                  borderRadius: '20px',
-                  border: '1px solid #E8EBE8',
-                  textAlign: 'center'
-                }}
-              >
-                {member.image ? (
-                  <img
-                    src={member.image}
-                    alt={member.name}
-                    style={{
-                      width: '64px',
-                      height: '64px',
-                      borderRadius: '50%',
-                      objectFit: 'cover',
-                      margin: '0 auto 16px',
-                      display: 'block'
-                    }}
-                  />
-                ) : (
-                  <div style={{
-                    width: '64px',
-                    height: '64px',
-                    borderRadius: '50%',
-                    background: member.color,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontWeight: 600,
-                    fontSize: '20px',
-                    margin: '0 auto 16px'
-                  }}>
-                    {member.avatar}
-                  </div>
-                )}
-                <p style={{ fontWeight: 600, color: '#1A2E1A', fontSize: '18px' }}>Ask{member.name}</p>
-                <p style={{ fontSize: '14px', color: '#8A9A8A', marginBottom: '16px' }}>{member.role}</p>
-                <div style={{
-                  padding: '12px 16px',
-                  background: 'white',
-                  borderRadius: '12px',
-                  border: '1px solid #E8EBE8',
-                  marginBottom: '12px'
-                }}>
-                  <p style={{ fontSize: '13px', color: '#4A5A4A', fontStyle: 'italic' }}>{member.example}</p>
-                </div>
-                <p style={{ fontSize: '12px', color: '#22C55E', fontWeight: 500 }}>{member.queries}</p>
-              </motion.div>
-            ))}
-          </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            style={{ textAlign: 'center', marginTop: '48px' }}
-          >
-            <p style={{ fontSize: '16px', color: '#4A5A4A', marginBottom: '24px' }}>
-              One knowledge base. Multiple experts. Zero bottlenecks.
-            </p>
-            <button className="btn-cta">
-              <svg width="20" height="24" viewBox="0 0 384 512" fill="currentColor">
-                <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
-              </svg>
-              Download AskKaya for Mac
-            </button>
-          </motion.div>
-        </div>
-      </section>
-
       {/* Your Twin Lives Where You Work */}
       <section style={{ padding: '100px 0', background: 'linear-gradient(180deg, #F0FDF4 0%, #FDFDFB 100%)' }}>
         <div className="container" style={{ textAlign: 'center' }}>
@@ -750,6 +619,137 @@ export default function Home() {
               </defs>
             </svg>
           </div>
+        </div>
+      </section>
+
+      {/* For Teams */}
+      <section id="teams" style={{ padding: '100px 0', background: 'white' }}>
+        <div className="container">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            style={{ textAlign: 'center', marginBottom: '64px' }}
+          >
+            <h2 style={{
+              fontSize: 'clamp(36px, 5vw, 52px)',
+              fontWeight: 600,
+              color: '#22C55E',
+              marginBottom: '24px',
+              letterSpacing: '-0.02em'
+            }}>
+              For your organization
+            </h2>
+            <p style={{
+              fontSize: '20px',
+              color: '#4A5A4A',
+              maxWidth: '600px',
+              margin: '0 auto'
+            }}>
+              Give your team members their own digital twin — scale expertise across your entire company
+            </p>
+          </motion.div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', maxWidth: '1000px', margin: '0 auto' }}>
+            {[
+              {
+                name: 'Sophie',
+                role: 'Head of Sales',
+                image: '/team/sophie.jpeg',
+                queries: '847 questions answered this month',
+                example: '"What\'s our enterprise pricing?"'
+              },
+              {
+                name: 'Yiliu',
+                role: 'Support Lead',
+                image: '/team/yiliu.jpeg',
+                queries: '1.2k questions answered this month',
+                example: '"How do I reset my password?"'
+              },
+              {
+                name: 'Jordan',
+                role: 'Product Manager',
+                image: '/team/jordan.jpeg',
+                queries: '523 questions answered this month',
+                example: '"When is v2.0 launching?"'
+              }
+            ].map((member, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                style={{
+                  padding: '32px',
+                  background: '#FAFAFA',
+                  borderRadius: '20px',
+                  border: '1px solid #E8EBE8',
+                  textAlign: 'center'
+                }}
+              >
+                {member.image ? (
+                  <img
+                    src={member.image}
+                    alt={member.name}
+                    style={{
+                      width: '64px',
+                      height: '64px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      margin: '0 auto 16px',
+                      display: 'block'
+                    }}
+                  />
+                ) : (
+                  <div style={{
+                    width: '64px',
+                    height: '64px',
+                    borderRadius: '50%',
+                    background: member.color,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontWeight: 600,
+                    fontSize: '20px',
+                    margin: '0 auto 16px'
+                  }}>
+                    {member.avatar}
+                  </div>
+                )}
+                <p style={{ fontWeight: 600, color: '#1A2E1A', fontSize: '18px' }}>Ask{member.name}</p>
+                <p style={{ fontSize: '14px', color: '#8A9A8A', marginBottom: '16px' }}>{member.role}</p>
+                <div style={{
+                  padding: '12px 16px',
+                  background: 'white',
+                  borderRadius: '12px',
+                  border: '1px solid #E8EBE8',
+                  marginBottom: '12px'
+                }}>
+                  <p style={{ fontSize: '13px', color: '#4A5A4A', fontStyle: 'italic' }}>{member.example}</p>
+                </div>
+                <p style={{ fontSize: '12px', color: '#22C55E', fontWeight: 500 }}>{member.queries}</p>
+              </motion.div>
+            ))}
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            style={{ textAlign: 'center', marginTop: '48px' }}
+          >
+            <p style={{ fontSize: '16px', color: '#4A5A4A', marginBottom: '24px' }}>
+              One knowledge base. Multiple experts. Zero bottlenecks.
+            </p>
+            <button className="btn-cta">
+              <svg width="20" height="24" viewBox="0 0 384 512" fill="currentColor">
+                <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
+              </svg>
+              Download AskKaya for Mac
+            </button>
+          </motion.div>
         </div>
       </section>
 
